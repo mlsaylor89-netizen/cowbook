@@ -24,6 +24,7 @@ export interface Breeding {
   animalId: string;
   date: string;
   bullId?: string;
+  embryoId?: string;
   breedingType: 'AI' | 'NaturalService' | 'Embryo';
   technician?: string;
   notes?: string;
@@ -136,6 +137,30 @@ export interface SemenPurchase {
   updatedAt: string;
 }
 
+export interface Embryo {
+  id: string;
+  donorName: string;      // donor cow name/ID
+  sireName?: string;      // sire bull name
+  sireNaabCode?: string;
+  breed: string;
+  studCompany?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmbryoPurchase {
+  id: string;
+  embryoId: string;
+  purchaseDate: string;
+  unitsCount: number;
+  pricePerUnit: number;
+  totalCost: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Settings {
   id: string; // always 'default'
   farmId: string;
@@ -161,6 +186,8 @@ export class DairyHerdDB extends Dexie {
   settings!: Table<Settings, string>;
   animalNotes!: Table<AnimalNote, string>;
   classifications!: Table<ClassificationScore, string>;
+  embryos!: Table<Embryo, string>;
+  embryoPurchases!: Table<EmbryoPurchase, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -185,6 +212,15 @@ export class DairyHerdDB extends Dexie {
     // v4: add classifications table
     this.version(4).stores({
       classifications: 'id, animalId, date',
+    });
+    // v5: add embryo inventory tables
+    this.version(5).stores({
+      embryos: 'id',
+      embryoPurchases: 'id, embryoId',
+    });
+    // v6: add embryoId index to breedings
+    this.version(6).stores({
+      breedings: 'id, animalId, date, pregnancyCheckScheduledDate, bullId, embryoId',
     });
   }
 }

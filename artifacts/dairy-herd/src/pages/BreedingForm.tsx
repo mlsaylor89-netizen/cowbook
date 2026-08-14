@@ -17,22 +17,24 @@ const formSchema = z.object({
   animalId: z.string().min(1, 'Cow is required'),
   date: z.string().min(1, 'Date is required'),
   bullId: z.string().optional(),
+  embryoId: z.string().optional(),
   breedingType: z.enum(['AI', 'NaturalService', 'Embryo']),
   technician: z.string().optional(),
 });
 
 export function BreedingForm() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const initialAnimalId = searchParams.get('animalId') || '';
 
-  const { animals, bulls, settings } = useLiveQuery(async () => {
+  const { animals, bulls, embryos, settings } = useLiveQuery(async () => {
     return {
       animals: await db.animals.where('status').anyOf(['Open', 'Heifer']).toArray(),
       bulls: await db.semenBulls.toArray(),
+      embryos: await db.embryos.toArray(),
       settings: await db.settings.get('default')
     };
-  }) || { animals: [], bulls: [], settings: null };
+  }) || { animals: [], bulls: [], embryos: [], settings: null };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,6 +43,7 @@ export function BreedingForm() {
       date: format(new Date(), 'yyyy-MM-dd'),
       breedingType: 'AI',
       bullId: '',
+      embryoId: '',
       technician: '',
     },
   });
@@ -50,7 +53,6 @@ export function BreedingForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!settings) return;
 
-    // Convert local date string to ISO
     const breedingDate = new Date(values.date).toISOString();
     const pregCheckDate = new Date(new Date(values.date).getTime() + settings.pregnancyCheckDays * 24 * 60 * 60 * 1000).toISOString();
 
@@ -58,7 +60,8 @@ export function BreedingForm() {
       animalId: values.animalId,
       date: breedingDate,
       breedingType: values.breedingType,
-      bullId: values.bullId || undefined,
+      bullId: values.breedingType !== 'Embryo' ? (values.bullId || undefined) : undefined,
+      embryoId: values.breedingType === 'Embryo' ? (values.embryoId || undefined) : undefined,
       technician: values.technician,
       pregnancyCheckScheduledDate: pregCheckDate
     });
@@ -83,7 +86,7 @@ export function BreedingForm() {
         <CardContent className="p-4 pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              
+
               <FormField
                 control={form.control}
                 name="animalId"
@@ -129,16 +132,21 @@ export function BreedingForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Breeding Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={(val) => {
+                      field.onChange(val);
+                      // clear the other selector when switching type
+                      form.setValue('bullId', '');
+                      form.setValue('embryoId', '');
+                    }} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-12 text-lg">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="AI">AI</SelectItem>
+                        <SelectItem value="AI">AI (Artificial Insemination)</SelectItem>
                         <SelectItem value="NaturalService">Natural Service</SelectItem>
-                        <SelectItem value="Embryo">Embryo</SelectItem>
+                        <SelectItem value="Embryo">Embryo Transfer (ET)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -167,11 +175,45 @@ export function BreedingForm() {
                           )}
                           {bulls.map(b => (
                             <SelectItem key={b.id} value={b.id}>
-                              {b.name}
+                              {b.name}{b.naabCode ? ` — ${b.naabCode}` : ''}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {breedingType === 'Embryo' && (
+                <FormField
+                  control={form.control}
+                  name="embryoId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Embryo Lot</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-12 text-lg">
+                            <SelectValue placeholder="Select embryo lot (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">Unknown / Not recorded</SelectItem>
+                          {embryos.map(e => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {e.donorName}{e.sireName ? ` × ${e.sireName}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {embryos.length === 0 && (
+                        <p className="text-xs text-muted-foreground pt-1">
+                          No embryo lots on file —{' '}
+                          <a href="/embryo/new" className="underline text-primary">add one</a> first to track inventory.
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

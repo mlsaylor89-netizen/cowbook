@@ -21,6 +21,10 @@ import { SemenInventory } from '@/pages/SemenInventory';
 import { SemenDetail } from '@/pages/SemenDetail';
 import { SemenBullForm } from '@/pages/SemenBullForm';
 import { SemenPurchaseForm } from '@/pages/SemenPurchaseForm';
+import { EmbryoInventory } from '@/pages/EmbryoInventory';
+import { EmbryoDetail } from '@/pages/EmbryoDetail';
+import { EmbryoDonorForm } from '@/pages/EmbryoDonorForm';
+import { EmbryoPurchaseForm } from '@/pages/EmbryoPurchaseForm';
 import { MoreMenu } from '@/pages/MoreMenu';
 import { Reports } from '@/pages/Reports';
 import { PrintReport } from '@/pages/PrintReport';
@@ -60,6 +64,11 @@ function Router() {
           <Route path="/semen/new" component={SemenBullForm} />
           <Route path="/semen/:id/purchase" component={SemenPurchaseForm} />
           <Route path="/semen/:id" component={SemenDetail} />
+
+          <Route path="/embryo" component={EmbryoInventory} />
+          <Route path="/embryo/new" component={EmbryoDonorForm} />
+          <Route path="/embryo/:id/purchase" component={EmbryoPurchaseForm} />
+          <Route path="/embryo/:id" component={EmbryoDetail} />
           
           <Route path="/more" component={MoreMenu} />
           <Route path="/reports" component={Reports} />
