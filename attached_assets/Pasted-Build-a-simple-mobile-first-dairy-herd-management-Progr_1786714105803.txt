@@ -1,0 +1,666 @@
+Build a simple, mobile-first dairy herd management Progressive Web App (PWA) designed primarily for small 30–100 cow dairy farms.
+
+The application should be deliberately simpler than DairyComp, DART, BoviSync, or other full herd-management programs. The primary goal is to give a farmer a very easy way to track cows, breeding, pregnancy checks, fresh cows, treatments, semen inventory, calving dates, and basic herd metrics.
+
+MOST IMPORTANT TECHNICAL REQUIREMENT — OFFLINE FIRST
+
+This application must work fully offline after it has been installed or loaded on the user's device.
+
+Build it as an installable Progressive Web App (PWA).
+
+The farmer must be able to:
+
+Open the app with no internet connection.
+View all herd records offline.
+Add and edit animals offline.
+Record breedings offline.
+Record calvings offline.
+Record pregnancy checks offline.
+Record treatments offline.
+View semen inventory offline.
+Use the herd checklist offline.
+View herd statistics such as average Days in Milk offline.
+
+Use a local on-device database such as IndexedDB for primary application data.
+
+Do NOT require a constant connection to a remote server for normal operation.
+
+Design the application's data layer so cloud backup and synchronization can be added later without rebuilding the application.
+
+If synchronization is eventually added, the local device database should remain the primary working database and synchronize with the cloud whenever an internet connection becomes available.
+
+Add proper PWA configuration including:
+
+Web app manifest
+Service worker
+Offline caching
+Installable home-screen icon
+Cached application shell
+Offline database
+Graceful handling of loss of internet connection
+
+The application should feel like a native mobile application when installed on an iPhone, iPad, Android phone, or tablet.
+
+USER EXPERIENCE
+
+The application is intended for working dairy farmers.
+
+Design priorities are:
+
+Extremely simple
+Fast
+Large buttons
+Minimal typing
+Easy to use with one hand
+Easy to read outdoors or in a barn
+No unnecessary menus
+No complicated charts unless requested
+Common tasks should take only a few taps
+
+The home page should answer one question:
+
+"What cows need my attention today?"
+
+MAIN HOME SCREEN
+
+Create a simple dashboard showing:
+
+Herd Summary
+
+Display:
+
+Total animals
+Cows currently milking
+Dry cows
+Heifers
+Pregnant animals
+Open animals
+Average Days in Milk
+Animals due to calve in next 30 days
+
+Average Days in Milk should be automatically calculated from the last calving date of all animals currently marked as lactating.
+
+TODAY'S HERD CHECKLIST
+
+This should be the most prominent part of the application.
+
+Automatically generate actionable lists.
+
+1. Pregnancy Check
+
+Show cows that:
+
+Have been bred 35 days or more ago
+Have not yet been confirmed pregnant from that breeding
+
+Display:
+
+Cow name or number
+Days since breeding
+Bull/semen used
+
+Provide quick-action buttons:
+
+PREGNANT
+OPEN
+RECHECK
+
+If Pregnant is selected:
+
+Record pregnancy confirmation date
+Keep the breeding date
+Calculate expected calving date
+Calculate projected dry-off date
+
+If Open is selected:
+
+Record the pregnancy check result
+Mark the cow as open
+Make her available for future breeding
+
+If Recheck is selected:
+
+Allow the farmer to choose a recheck date
+Return the cow to the herd checklist on that date
+2. Fresh Cow Check
+
+Automatically show cows that recently calved.
+
+Default fresh-cow-check window:
+
+0–10 Days in Milk
+
+Make this setting configurable.
+
+Show:
+
+Cow
+Calving date
+Days in Milk
+
+Allow farmer to mark:
+
+NORMAL
+TREATMENT NEEDED
+RECHECK
+
+If Treatment Needed is selected, open a treatment-record form.
+
+3. Breeding List
+
+Create an optional breeding-attention list.
+
+Show cows that:
+
+Are not pregnant
+Are past the farm's voluntary waiting period
+
+Default voluntary waiting period:
+
+60 Days in Milk
+
+Make this setting configurable.
+
+Display:
+
+Cow
+Days in Milk
+Last breeding date, if any
+Number of services this lactation
+4. Dry-Off List
+
+For confirmed pregnant cows, calculate suggested dry-off date.
+
+Default:
+
+60 days before expected calving date.
+
+Make this setting configurable.
+
+Show cows approaching dry-off.
+
+Default warning:
+
+14 days before projected dry-off.
+
+5. Upcoming Calvings
+
+Show animals due to calve:
+
+Within 7 days
+Within 30 days
+Within 60 days
+
+Clearly display the number of days until expected calving.
+
+6. Treatment Follow-Up
+
+Show animals that:
+
+Are currently under treatment
+Have an upcoming treatment scheduled
+Are within a milk withholding period
+Require a follow-up check
+ANIMAL RECORDS
+
+Create individual animal records.
+
+Fields:
+
+Cow/name/number
+Registration number — optional
+RFID/tag number — optional
+Breed
+Birth date — optional
+Lactation number
+Current status
+
+Statuses:
+
+Lactating
+Dry
+Heifer
+Bred Heifer
+Pregnant
+Open
+Sold
+Dead
+
+Record:
+
+Last calving date
+Current Days in Milk
+Last breeding date
+Pregnancy status
+Expected calving date
+Expected dry-off date
+
+Each animal should have a chronological history showing:
+
+Calvings
+Breedings
+Pregnancy checks
+Treatments
+Dry dates
+Status changes
+CALVING RECORD
+
+Create a simple "Record Calving" action.
+
+Fields:
+
+Cow
+Calving date
+Calf sex
+
+Options:
+
+Heifer
+Bull
+Twins
+Stillborn
+Unknown
+
+Optional notes.
+
+When a calving is recorded:
+
+Mark cow Lactating.
+Set Days in Milk to zero on the calving date.
+Start counting DIM automatically each day.
+Add cow to Fresh Cow Check list.
+Close previous pregnancy.
+Increment lactation number if applicable.
+Save event in animal history.
+BREEDING RECORD
+
+Make recording a breeding extremely fast.
+
+Required fields:
+
+Cow
+Breeding date
+Bull/semen used
+
+Default breeding date to today.
+
+Optional fields:
+
+Technician
+Notes
+Breeding type
+
+Breeding type options:
+
+AI
+Natural Service
+Embryo
+
+When AI is selected and semen is selected:
+
+Automatically subtract one unit/straw from semen inventory.
+
+After breeding:
+
+Automatically place the cow on the pregnancy-check list when she reaches 35 days bred.
+
+Store every service permanently in her breeding history.
+
+Allow multiple services per lactation.
+
+SEMEN INVENTORY
+
+Create a semen inventory section.
+
+Each bull should contain:
+
+Bull name
+NAAB code — optional
+Registration number — optional
+Breed
+Stud/company — optional
+Purchase date
+Number of units purchased
+Units remaining
+Price per unit
+Total purchase cost
+Notes
+
+Allow semen purchase transactions.
+
+Example:
+
+Bull: Victorious
+Units purchased: 10
+Price per straw: $28
+
+Inventory becomes:
+
+10 units
+
+Every AI breeding using Victorious automatically reduces inventory by one.
+
+Allow manual inventory corrections.
+
+Never allow historical breeding records to disappear if semen inventory reaches zero.
+
+Display low-inventory warnings.
+
+Default low inventory threshold:
+
+2 units
+
+Make threshold configurable.
+
+SEMEN PURCHASE HISTORY
+
+Create a purchase history showing:
+
+Purchase date
+Bull
+Quantity
+Cost per unit
+Total cost
+
+Allow the user to see total semen purchases by year.
+
+TREATMENT RECORD
+
+Keep the treatment system simple but useful.
+
+Fields:
+
+Animal
+Date
+Condition/problem
+Product/treatment
+Dose
+Route
+Person administering
+Milk withholding
+Meat withholding
+Follow-up date
+Notes
+
+Routes:
+
+IM
+SQ
+IV
+Oral
+Intramammary
+Topical
+Other
+
+Allow multiple treatment entries for the same illness/event.
+
+Clearly display animals currently under milk withholding.
+
+Create a visual warning such as:
+
+MILK WITHHOLD — DO NOT SHIP
+
+Do not attempt to calculate drug withdrawal times automatically unless the farmer manually enters them.
+
+HERD METRICS
+
+Keep metrics simple.
+
+Display:
+
+Average Days in Milk
+
+Calculate:
+
+Total DIM of all currently lactating cows / number of lactating cows.
+
+Average Days to First Service
+
+Calculate using cows with a breeding during their current lactation.
+
+Average Days Open
+
+For pregnant cows:
+
+Pregnancy-establishing breeding date minus last calving date.
+
+Services Per Pregnancy
+
+Calculate:
+
+Number of breedings divided by confirmed pregnancies.
+
+Conception By Bull
+
+For each bull show:
+
+Services
+Confirmed pregnancies
+Conception percentage
+
+Only calculate when adequate records exist.
+
+Do not make complicated statistical claims from very small sample sizes.
+
+SEARCH
+
+Create a large search bar.
+
+Allow searching by:
+
+Cow number
+Cow name
+Registration number
+Tag number
+
+Selecting a cow opens her complete record.
+
+QUICK ADD BUTTON
+
+Include a large "+" or "Record Event" button accessible from every screen.
+
+Options:
+
+Breeding
+Calving
+Pregnancy Check
+Treatment
+Add Animal
+Semen Purchase
+SETTINGS
+
+Allow user to configure:
+
+Pregnancy check eligibility:
+Default 35 days after breeding
+
+Fresh cow check window:
+Default 10 DIM
+
+Voluntary waiting period:
+Default 60 DIM
+
+Dry period:
+Default 60 days
+
+Dry-off warning:
+Default 14 days
+
+Low semen inventory:
+Default 2 units
+
+Gestation length:
+Default 283 days
+
+Allow gestation length to be changed globally and, if practical, by breed.
+
+DATA EXPORT AND BACKUP
+
+Because this application contains valuable farm records, include easy backup.
+
+Allow user to export all farm data as:
+
+JSON complete backup
+CSV where practical
+
+Allow the user to restore the application from a JSON backup file.
+
+Backup and restore must work without requiring a subscription.
+
+Build the architecture so automatic cloud backup can be added later.
+
+PRINTABLE HERD CHECK LIST
+
+Create a print-friendly Herd Check Report.
+
+Include sections:
+
+PREG CHECK
+
+FRESH COW CHECK
+
+BREEDING ATTENTION
+
+DRY OFF
+
+UPCOMING CALVINGS
+
+TREATMENT / WITHHOLD
+
+Format it so it prints cleanly on standard letter paper.
+
+The farmer should be able to print this list and carry it through the barn with a veterinarian, breeder, or herd-check technician.
+
+FUTURE MULTI-FARM CAPABILITY
+
+Version 1 can operate as a single-farm application.
+
+However, structure the database so that a Farm ID can be added to records and a future version could support multiple independent farms.
+
+Do not build unnecessary multi-user complexity into version 1.
+
+PRIVACY
+
+No advertising.
+
+No sale of user data.
+
+Farm records should remain private.
+
+Version 1 should not require sharing herd information with a third party.
+
+VISUAL STYLE
+
+Use a clean agricultural/professional appearance.
+
+Avoid cartoon farm graphics.
+
+Use:
+
+Large readable text
+Large touch targets
+Clean cards
+Simple navigation
+Strong contrast
+Minimal clutter
+
+Optimize primarily for phones but make it work well on tablets and desktop computers.
+
+NAVIGATION
+
+Bottom navigation on mobile:
+
+HOME
+
+HERD
+
+BREEDING
+
+SEMEN
+
+MORE
+
+Under MORE:
+
+Treatments
+Reports
+Backup
+Settings
+DATABASE DESIGN
+
+Create a logical relational data structure including at minimum:
+
+Animals
+Breedings
+PregnancyChecks
+Calvings
+Treatments
+SemenInventory
+SemenPurchases
+Settings
+
+Use unique IDs rather than animal names as relationships between database records.
+
+Historical records should never depend on the current animal name remaining unchanged.
+
+Include created-at and updated-at timestamps.
+
+IMPORTANT DESIGN PHILOSOPHY
+
+Do not turn this into complicated herd-management software.
+
+A farmer should be able to learn the basic app without reading instructions.
+
+Recording a breeding should take approximately 3–4 taps.
+
+Recording a pregnancy result from the herd-check list should take approximately 1–2 taps.
+
+Recording a calving should take approximately 3–4 taps.
+
+Prioritize reliability and simplicity over advanced features.
+
+Build the first working version around this loop:
+
+CALVED → FRESH CHECK → BRED → PREG CHECK → PREGNANT → DRY OFF → CALVED
+
+The application should automatically generate the farmer's work lists from those events.
+
+INITIAL DEMO DATA
+
+Populate the development version with approximately 10 fictional cows and 4 fictional bulls so every feature can be tested.
+
+Include examples of:
+
+Fresh cow
+Open cow
+Cow bred 20 days
+Cow bred 40 days awaiting preg check
+Confirmed pregnant cow
+Cow approaching dry-off
+Cow due to calve
+Cow under treatment
+Low semen inventory
+
+Provide a simple option to delete all demo data before real use.
+
+BEFORE CONSIDERING THE PROJECT COMPLETE
+
+Test these specific scenarios:
+
+Install the app as a PWA.
+Load the application while online.
+Disconnect the device from internet access.
+Close and reopen the application.
+Confirm all herd records remain accessible.
+Add a new cow while completely offline.
+Record a breeding while completely offline.
+Confirm semen inventory decreases offline.
+Record a treatment while offline.
+Close and reopen the application while still offline.
+Confirm all newly entered data remains saved.
+Confirm the herd checklist calculates correctly while offline.
+Restore internet access and confirm no records are lost.
+
+Do not consider "the page loads offline" sufficient.
+
+The DATABASE AND ALL CORE FARM FUNCTIONS must actually operate offline.

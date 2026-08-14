@@ -1,0 +1,297 @@
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/db';
+import { getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, processPregCheck } from '@/db/computed';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Link, useRoute } from 'wouter';
+import { ArrowLeft, Check, X, Calendar, AlertCircle } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { useState } from 'react';
+
+export function Checklist() {
+  const [match, params] = useRoute('/checklist/:type');
+  const type = params?.type;
+
+  const data = useLiveQuery(async () => {
+    const animals = await db.animals.toArray();
+    const breedings = await db.breedings.toArray();
+    const pregChecks = await db.pregnancyChecks.toArray();
+    const treatments = await db.treatments.toArray();
+    const settings = await db.settings.get('default');
+    if (!settings) return null;
+
+    return {
+      settings,
+      pregCheck: getPregCheckList(animals, breedings, pregChecks, settings),
+      fresh: getFreshCowList(animals, settings),
+      breedingAttention: getBreedingAttentionList(animals, breedings, settings),
+      dryOff: getDryOffList(animals, settings),
+      calvings: getUpcomingCalvings(animals),
+      treatments: getTreatmentFollowUp(treatments, animals)
+    };
+  });
+
+  if (!data) return <div className="p-4">Loading...</div>;
+
+  let title = 'Checklist';
+  let content = null;
+
+  switch (type) {
+    case 'preg-check':
+      title = 'Pregnancy Check';
+      content = <PregCheckList list={data.pregCheck} settings={data.settings} />;
+      break;
+    case 'fresh-cow':
+      title = 'Fresh Cow Check';
+      content = <FreshCowList list={data.fresh} />;
+      break;
+    case 'breeding':
+      title = 'Breeding Attention';
+      content = <BreedingAttentionList list={data.breedingAttention} />;
+      break;
+    case 'dry-off':
+      title = 'Dry-Off Approaching';
+      content = <DryOffList list={data.dryOff} />;
+      break;
+    case 'calvings':
+      title = 'Upcoming Calvings';
+      content = <CalvingsList list={data.calvings} />;
+      break;
+    case 'treatments':
+      title = 'Treatment Follow-Up';
+      content = <TreatmentsList data={data.treatments} />;
+      break;
+    default:
+      content = <div>Unknown checklist type.</div>;
+  }
+
+  return (
+    <div className="space-y-4 max-w-3xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <Link href="/">
+          <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+        <h2 className="text-xl font-bold">{title}</h2>
+      </div>
+      {content}
+    </div>
+  );
+}
+
+function PregCheckList({ list, settings }: { list: any[], settings: any }) {
+  if (list.length === 0) return <EmptyState text="No animals due for pregnancy check." />;
+
+  return (
+    <div className="space-y-3">
+      {list.map(({ animal, breeding, daysSinceBreeding }) => (
+        <Card key={animal.id}>
+          <CardContent className="p-4">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
+                  {animal.number} {animal.name}
+                </Link>
+                <p className="text-sm text-muted-foreground">Bred {format(parseISO(breeding.date), 'MMM d')} ({daysSinceBreeding} days ago)</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                className="flex-1 bg-green-700 hover:bg-green-800" 
+                onClick={async () => {
+                  await processPregCheck({ animalId: animal.id, breedingId: breeding.id, checkDate: new Date().toISOString(), result: 'Pregnant' }, animal, settings);
+                }}
+              >
+                Pregnant
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-white"
+                onClick={async () => {
+                  await processPregCheck({ animalId: animal.id, breedingId: breeding.id, checkDate: new Date().toISOString(), result: 'Open' }, animal, settings);
+                }}
+              >
+                Open
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function FreshCowList({ list }: { list: any[] }) {
+  if (list.length === 0) return <EmptyState text="No fresh cows in the window." />;
+
+  return (
+    <div className="space-y-3">
+      {list.map(({ animal, dim }) => (
+        <Card key={animal.id}>
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
+                {animal.number} {animal.name}
+              </Link>
+              <p className="text-sm text-muted-foreground">{dim} DIM • Calved {format(parseISO(animal.lastCalvingDate), 'MMM d')}</p>
+            </div>
+            <Link href={`/herd/${animal.id}`}>
+              <Button variant="secondary" size="sm">View</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function BreedingAttentionList({ list }: { list: any[] }) {
+  if (list.length === 0) return <EmptyState text="No animals need breeding attention." />;
+
+  return (
+    <div className="space-y-3">
+      {list.map(({ animal, dim, lastBreedingDate, servicesThisLactation }) => (
+        <Card key={animal.id}>
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
+                {animal.number} {animal.name}
+              </Link>
+              <p className="text-sm font-medium">{animal.status} • {dim} DIM</p>
+              <p className="text-xs text-muted-foreground">
+                {servicesThisLactation} services {lastBreedingDate && `• Last: ${format(parseISO(lastBreedingDate), 'MMM d')}`}
+              </p>
+            </div>
+            <Link href={`/breeding?animalId=${animal.id}`}>
+              <Button size="sm">Breed</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function DryOffList({ list }: { list: any[] }) {
+  if (list.length === 0) return <EmptyState text="No cows approaching dry-off." />;
+
+  return (
+    <div className="space-y-3">
+      {list.map(({ animal, daysUntilDryOff }) => (
+        <Card key={animal.id}>
+          <CardContent className="p-4 flex justify-between items-center">
+            <div>
+              <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
+                {animal.number} {animal.name}
+              </Link>
+              <p className="text-sm text-muted-foreground">Due: {format(parseISO(animal.expectedCalvingDate!), 'MMM d, yyyy')}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-lg">{daysUntilDryOff < 0 ? 'Past Due' : `${daysUntilDryOff} days`}</p>
+              <p className="text-xs text-muted-foreground text-right">{format(parseISO(animal.expectedDryOffDate!), 'MMM d')}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function CalvingsList({ list }: { list: any }) {
+  const all = [...list.due7Days, ...list.due30Days, ...list.due60Days];
+  if (all.length === 0) return <EmptyState text="No upcoming calvings." />;
+
+  return (
+    <div className="space-y-6">
+      {list.due7Days.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-destructive uppercase tracking-wider mb-3 px-1">Due in ≤ 7 Days</h3>
+          <div className="space-y-3">
+            {list.due7Days.map((item: any) => <CalvingRow key={item.animal.id} item={item} />)}
+          </div>
+        </div>
+      )}
+      {list.due30Days.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Due in 8–30 Days</h3>
+          <div className="space-y-3">
+            {list.due30Days.map((item: any) => <CalvingRow key={item.animal.id} item={item} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CalvingRow({ item }: { item: any }) {
+  const { animal, daysUntilCalving } = item;
+  return (
+    <Card>
+      <CardContent className="p-4 flex justify-between items-center">
+        <div>
+          <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
+            {animal.number} {animal.name}
+          </Link>
+          <p className="text-sm text-muted-foreground">Date: {format(parseISO(animal.expectedCalvingDate!), 'MMM d, yyyy')}</p>
+        </div>
+        <div className="text-right">
+          <p className={`font-bold text-lg ${daysUntilCalving <= 7 ? 'text-destructive' : ''}`}>
+            {daysUntilCalving < 0 ? 'Past Due' : `${daysUntilCalving} days`}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TreatmentsList({ data }: { data: any }) {
+  const all = [...data.withholding, ...data.active.filter((a: any) => !data.withholding.some((w: any) => w.treatment.id === a.treatment.id))];
+  
+  if (all.length === 0) return <EmptyState text="No active treatments." />;
+
+  return (
+    <div className="space-y-3">
+      {all.map(({ animal, treatment }: any) => {
+        const isWithholding = treatment.milkWithholdUntil && new Date(treatment.milkWithholdUntil) > new Date();
+        
+        return (
+          <Card key={treatment.id} className={isWithholding ? 'border-destructive' : ''}>
+            {isWithholding && (
+              <div className="bg-destructive text-white text-xs font-bold uppercase tracking-wider text-center py-1">
+                Milk Withhold - Do Not Ship
+              </div>
+            )}
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <Link href={`/herd/${animal?.id}`} className="font-bold text-lg text-primary hover:underline">
+                  {animal?.number} {animal?.name}
+                </Link>
+                <Button variant="outline" size="sm" onClick={() => {
+                  db.treatments.update(treatment.id, { resolved: true, updatedAt: new Date().toISOString() });
+                }}>
+                  Resolve
+                </Button>
+              </div>
+              <p className="font-medium text-sm">{treatment.condition} — {treatment.product}</p>
+              {isWithholding && (
+                <p className="text-xs text-destructive mt-1 font-bold">
+                  Withhold until {format(parseISO(treatment.milkWithholdUntil), 'MMM d, yyyy h:mm a')}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="text-center py-12 px-4 rounded-xl border border-dashed border-border bg-card/50">
+      <Check className="h-12 w-12 mx-auto text-muted-foreground opacity-20 mb-3" />
+      <p className="text-muted-foreground">{text}</p>
+    </div>
+  );
+}

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Dairy Herd Manager"
+description = "A mobile-first, offline-first Progressive Web App for small dairy farms (30–100 cows). Lets farmers track animals, record breedings, pregnancy checks, calvings, and treatments, manage semen inventory, and view herd metrics — all fully offline via IndexedDB. No server or internet connection required after first load."
+version = "1.0.0"
+id = "artifacts/dairy-herd"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25575
+
+[services.development]
+run = "pnpm --filter @workspace/dairy-herd run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/dairy-herd", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/dairy-herd/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25575"
+BASE_PATH = "/"
