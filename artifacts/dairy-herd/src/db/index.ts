@@ -75,6 +75,13 @@ export interface Treatment {
   updatedAt: string;
 }
 
+export interface AnimalNote {
+  id: string;
+  animalId: string;
+  note: string;
+  createdAt: string;
+}
+
 export interface SemenBull {
   id: string;
   name: string;
@@ -122,6 +129,7 @@ export class DairyHerdDB extends Dexie {
   semenBulls!: Table<SemenBull, string>;
   semenPurchases!: Table<SemenPurchase, string>;
   settings!: Table<Settings, string>;
+  animalNotes!: Table<AnimalNote, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -138,6 +146,10 @@ export class DairyHerdDB extends Dexie {
     // v2: add bullId index to breedings so SemenDetail can query usage by bull
     this.version(2).stores({
       breedings: 'id, animalId, date, pregnancyCheckScheduledDate, bullId',
+    });
+    // v3: add animalNotes table
+    this.version(3).stores({
+      animalNotes: 'id, animalId, createdAt',
     });
   }
 }

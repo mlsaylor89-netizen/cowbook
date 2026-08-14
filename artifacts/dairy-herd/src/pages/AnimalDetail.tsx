@@ -1,10 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useState } from 'react';
 import { db } from '@/db';
 import { getDIM } from '@/db/computed';
 import { Link, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { StatusBadge } from './HerdList';
 
@@ -21,14 +23,15 @@ export function AnimalDetail() {
     const calvings = await db.calvings.where('animalId').equals(id).reverse().sortBy('calvingDate');
     const treatments = await db.treatments.where('animalId').equals(id).reverse().sortBy('date');
     const pregChecks = await db.pregnancyChecks.where('animalId').equals(id).reverse().sortBy('checkDate');
+    const notes = await db.animalNotes.where('animalId').equals(id).reverse().sortBy('createdAt');
 
-    return { animal, breedings, calvings, treatments, pregChecks };
+    return { animal, breedings, calvings, treatments, pregChecks, notes };
   }, [id]);
 
   if (data === undefined) return <div className="p-4">Loading...</div>;
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
-  const { animal, breedings, calvings, treatments, pregChecks } = data;
+  const { animal, breedings, calvings, treatments, pregChecks, notes } = data;
   const dim = getDIM(animal);
 
   return (
@@ -140,6 +143,90 @@ export function AnimalDetail() {
           )}
         </div>
       </div>
+
+      {/* Notes */}
+      <NotesSection animalId={animal.id} notes={notes} />
+    </div>
+  );
+}
+
+function NotesSection({ animalId, notes }: { animalId: string; notes: any[] }) {
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function addNote() {
+    const text = draft.trim();
+    if (!text) return;
+    setSaving(true);
+    await db.animalNotes.add({
+      id: self.crypto.randomUUID(),
+      animalId,
+      note: text,
+      createdAt: new Date().toISOString(),
+    });
+    setDraft('');
+    setSaving(false);
+  }
+
+  async function deleteNote(id: string) {
+    await db.animalNotes.delete(id);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <StickyNote className="h-5 w-5 text-muted-foreground" />
+        <h3 className="text-lg font-bold">Notes</h3>
+      </div>
+
+      {/* Add note */}
+      <Card>
+        <CardContent className="p-3 space-y-2">
+          <Textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            placeholder="Add a note about this animal…"
+            className="text-base min-h-[80px] resize-none"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) addNote();
+            }}
+          />
+          <Button
+            className="w-full h-11"
+            onClick={addNote}
+            disabled={!draft.trim() || saving}
+          >
+            Save Note
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Existing notes */}
+      {notes.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-2">No notes yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {notes.map(n => (
+            <Card key={n.id}>
+              <CardContent className="p-3 flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {format(parseISO(n.createdAt), 'MMM d, yyyy · h:mm a')}
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{n.note}</p>
+                </div>
+                <button
+                  onClick={() => deleteNote(n.id)}
+                  className="shrink-0 text-muted-foreground hover:text-destructive transition-colors p-1"
+                  aria-label="Delete note"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,8 +8,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const formSchema = z.object({
   number: z.string().min(1, 'Number is required'),
@@ -54,6 +65,20 @@ export function AnimalForm() {
       });
     }
   }, [id, isEdit, form]);
+
+  async function removeAnimal() {
+    if (!id) return;
+    // Delete the animal and all associated records
+    await Promise.all([
+      db.animals.delete(id),
+      db.breedings.where('animalId').equals(id).delete(),
+      db.calvings.where('animalId').equals(id).delete(),
+      db.pregnancyChecks.where('animalId').equals(id).delete(),
+      db.treatments.where('animalId').equals(id).delete(),
+      db.animalNotes.where('animalId').equals(id).delete(),
+    ]);
+    setLocation('/herd');
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const now = new Date().toISOString();
@@ -185,6 +210,36 @@ export function AnimalForm() {
           </Form>
         </CardContent>
       </Card>
+
+      {isEdit && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full h-12 border-destructive text-destructive hover:bg-destructive hover:text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Remove Animal
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove this animal?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the animal and all of her records — breedings, calvings, pregnancy checks, treatments, and notes. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive hover:bg-destructive/90 text-white"
+                onClick={removeAnimal}
+              >
+                Yes, Remove Animal
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

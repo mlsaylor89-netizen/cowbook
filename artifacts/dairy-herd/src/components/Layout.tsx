@@ -22,7 +22,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar */}
       <aside className="hidden sm:flex flex-col w-64 border-r bg-card h-[100dvh] sticky top-0 shrink-0">
         <div className="flex h-16 items-center px-6 border-b bg-primary text-primary-foreground">
-          <h1 className="text-xl font-bold tracking-tight">DairyHerd</h1>
+          <h1 className="text-xl font-bold tracking-tight">HerdTrack</h1>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
           <SidebarItem href="/" icon={Home} label="Home" active={location === '/'} />
@@ -42,7 +42,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile Header */}
         <header className="sm:hidden sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-primary px-4 shadow-sm text-primary-foreground">
-          <h1 className="text-lg font-bold tracking-tight">DairyHerd</h1>
+          <h1 className="text-lg font-bold tracking-tight">HerdTrack</h1>
         </header>
         
         <main className="flex-1 pb-20 sm:pb-8 px-4 py-4 sm:px-8 sm:py-8 overflow-x-hidden">

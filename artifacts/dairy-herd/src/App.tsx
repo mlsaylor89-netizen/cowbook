@@ -26,6 +26,7 @@ import { Settings } from '@/pages/Settings';
 import { Backup } from '@/pages/Backup';
 import { Checklist } from '@/pages/Checklist';
 import { TreatmentForm } from '@/pages/TreatmentForm';
+import { TreatmentLog } from '@/pages/TreatmentLog';
 import { CalvingForm } from '@/pages/CalvingForm';
 import { PregCheckForm } from '@/pages/PregCheckForm';
 
@@ -47,6 +48,7 @@ function Router() {
           
           <Route path="/breeding" component={BreedingForm} />
           <Route path="/treatment" component={TreatmentForm} />
+          <Route path="/treatment-log" component={TreatmentLog} />
           <Route path="/calving" component={CalvingForm} />
           <Route path="/preg-check" component={PregCheckForm} />
           
