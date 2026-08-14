@@ -68,7 +68,9 @@ export function SemenDetail() {
         </CardContent>
       </Card>
 
-      <Button className="w-full h-14 text-lg font-bold" disabled>Record Purchase</Button>
+      <Link href={`/semen/${id}/purchase`}>
+        <Button className="w-full h-14 text-lg font-bold">Record Purchase</Button>
+      </Link>
 
       <AlertDialog>
         <AlertDialogTrigger asChild>

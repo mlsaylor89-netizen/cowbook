@@ -19,6 +19,8 @@ import { AnimalForm } from '@/pages/AnimalForm';
 import { BreedingForm } from '@/pages/BreedingForm';
 import { SemenInventory } from '@/pages/SemenInventory';
 import { SemenDetail } from '@/pages/SemenDetail';
+import { SemenBullForm } from '@/pages/SemenBullForm';
+import { SemenPurchaseForm } from '@/pages/SemenPurchaseForm';
 import { MoreMenu } from '@/pages/MoreMenu';
 import { Reports } from '@/pages/Reports';
 import { PrintReport } from '@/pages/PrintReport';
@@ -55,6 +57,8 @@ function Router() {
           <Route path="/preg-check" component={PregCheckForm} />
           
           <Route path="/semen" component={SemenInventory} />
+          <Route path="/semen/new" component={SemenBullForm} />
+          <Route path="/semen/:id/purchase" component={SemenPurchaseForm} />
           <Route path="/semen/:id" component={SemenDetail} />
           
           <Route path="/more" component={MoreMenu} />
