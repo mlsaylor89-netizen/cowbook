@@ -26,6 +26,8 @@ import { Settings } from '@/pages/Settings';
 import { Backup } from '@/pages/Backup';
 import { Checklist } from '@/pages/Checklist';
 import { TreatmentForm } from '@/pages/TreatmentForm';
+import { CalvingForm } from '@/pages/CalvingForm';
+import { PregCheckForm } from '@/pages/PregCheckForm';
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,8 @@ function Router() {
           
           <Route path="/breeding" component={BreedingForm} />
           <Route path="/treatment" component={TreatmentForm} />
+          <Route path="/calving" component={CalvingForm} />
+          <Route path="/preg-check" component={PregCheckForm} />
           
           <Route path="/semen" component={SemenInventory} />
           <Route path="/semen/:id" component={SemenDetail} />
