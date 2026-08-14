@@ -155,9 +155,6 @@ export function AnimalDetail() {
   );
 }
 
-const SCORE_LABEL: Record<string, string> = {
-  E: 'Excellent', VG: 'Very Good', 'G+': 'Good Plus', G: 'Good', F: 'Fair', P: 'Poor',
-};
 const SCORE_COLOR: Record<string, string> = {
   E: 'text-emerald-700 bg-emerald-50 border-emerald-300',
   VG: 'text-green-700 bg-green-50 border-green-300',
@@ -166,15 +163,6 @@ const SCORE_COLOR: Record<string, string> = {
   F: 'text-orange-700 bg-orange-50 border-orange-300',
   P: 'text-red-700 bg-red-50 border-red-300',
 };
-
-const TRAIT_LABELS: Record<string, string> = {
-  stature: 'Stature', strength: 'Strength', bodyDepth: 'Body Depth', dairyForm: 'Dairy Form',
-  footAngle: 'Foot Angle', rearLegs: 'Rear Legs',
-  foreUdderAttachment: 'Fore Udder', rearUdderHeight: 'Rear Udder Ht', rearUdderWidth: 'Rear Udder W',
-  udderCleft: 'Udder Cleft', udderDepth: 'Udder Depth', frontTeatPlacement: 'Front Teats',
-  rearTeatPlacement: 'Rear Teats', teatLength: 'Teat Length',
-};
-const TRAIT_KEYS = Object.keys(TRAIT_LABELS);
 
 function ClassificationsSection({ animalId, classifications }: { animalId: string; classifications: ClassificationScore[] }) {
   return (
@@ -192,48 +180,32 @@ function ClassificationsSection({ animalId, classifications }: { animalId: strin
       {classifications.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-2">No classification records yet.</p>
       ) : (
-        <div className="space-y-3">
-          {classifications.map(c => {
-            const filled = TRAIT_KEYS.filter(k => (c as any)[k] != null);
-            return (
-              <Card key={c.id}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{format(parseISO(c.date), 'MMM d, yyyy')}{c.classifier ? ` · ${c.classifier}` : ''}</p>
-                      {c.finalScore && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`inline-block border rounded px-2 py-0.5 text-sm font-bold ${SCORE_COLOR[c.finalScore]}`}>
-                            {c.finalScore}
-                          </span>
-                          <span className="font-semibold text-sm">{SCORE_LABEL[c.finalScore]}</span>
-                          {c.finalPoints && <span className="text-sm text-muted-foreground">({c.finalPoints} pts)</span>}
-                        </div>
-                      )}
-                    </div>
-                    <Link href={`/classification?animalId=${animalId}&editId=${c.id}`}>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-
-                  {filled.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
-                      {filled.map(k => (
-                        <div key={k} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">{TRAIT_LABELS[k]}</span>
-                          <span className="font-bold ml-2">{(c as any)[k]}/9</span>
-                        </div>
-                      ))}
-                    </div>
+        <div className="space-y-2">
+          {classifications.map(c => (
+            <Card key={c.id}>
+              <CardContent className="p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {c.finalScore && (
+                    <span className={`shrink-0 border rounded px-2 py-0.5 text-sm font-bold ${SCORE_COLOR[c.finalScore]}`}>
+                      {c.finalScore}
+                    </span>
                   )}
-
-                  {c.notes && <p className="text-xs text-muted-foreground italic">{c.notes}</p>}
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <div className="min-w-0">
+                    <p className="font-bold">{c.finalPoints ? `${c.finalPoints} pts` : '—'}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {format(parseISO(c.date), 'MMM d, yyyy')}{c.classifier ? ` · ${c.classifier}` : ''}
+                    </p>
+                    {c.notes && <p className="text-xs text-muted-foreground italic truncate">{c.notes}</p>}
+                  </div>
+                </div>
+                <Link href={`/classification?animalId=${animalId}&editId=${c.id}`}>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>
