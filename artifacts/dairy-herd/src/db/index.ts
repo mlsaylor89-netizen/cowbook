@@ -72,6 +72,9 @@ export interface Treatment {
   followUpDate?: string;
   notes?: string;
   resolved: boolean;
+  // Pharmacy link
+  drugProductId?: string;
+  quantityUsed?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,18 +84,14 @@ export interface ClassificationScore {
   animalId: string;
   date: string;
   classifier?: string;
-  // Overall
   finalScore?: 'E' | 'VG' | 'G+' | 'G' | 'F' | 'P';
   finalPoints?: number;
-  // Frame (1–9 linear)
   stature?: number;
   strength?: number;
   bodyDepth?: number;
   dairyForm?: number;
-  // Feet & Legs (1–9)
   footAngle?: number;
   rearLegs?: number;
-  // Udder (1–9)
   foreUdderAttachment?: number;
   rearUdderHeight?: number;
   rearUdderWidth?: number;
@@ -139,8 +138,8 @@ export interface SemenPurchase {
 
 export interface Embryo {
   id: string;
-  donorName: string;      // donor cow name/ID
-  sireName?: string;      // sire bull name
+  donorName: string;
+  sireName?: string;
   sireNaabCode?: string;
   breed: string;
   studCompany?: string;
@@ -156,6 +155,24 @@ export interface EmbryoPurchase {
   unitsCount: number;
   pricePerUnit: number;
   totalCost: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type DrugRoute = 'IM' | 'SQ' | 'IV' | 'Oral' | 'Intramammary' | 'Topical' | 'Other';
+
+export interface DrugProduct {
+  id: string;
+  name: string;
+  unit: string;           // "mL", "tablets", "tubes", "g", "oz", etc.
+  bottleSize?: number;    // full/original quantity — used to compute % remaining
+  quantityOnHand: number;
+  milkWithholdDays: number;
+  meatWithholdDays: number;
+  defaultDose?: string;   // e.g. "10 mL per 100 lb"
+  defaultRoute?: DrugRoute;
+  lowStockThreshold?: number;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -188,6 +205,7 @@ export class DairyHerdDB extends Dexie {
   classifications!: Table<ClassificationScore, string>;
   embryos!: Table<Embryo, string>;
   embryoPurchases!: Table<EmbryoPurchase, string>;
+  drugProducts!: Table<DrugProduct, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -201,26 +219,26 @@ export class DairyHerdDB extends Dexie {
       semenPurchases: 'id, bullId',
       settings: 'id'
     });
-    // v2: add bullId index to breedings so SemenDetail can query usage by bull
     this.version(2).stores({
       breedings: 'id, animalId, date, pregnancyCheckScheduledDate, bullId',
     });
-    // v3: add animalNotes table
     this.version(3).stores({
       animalNotes: 'id, animalId, createdAt',
     });
-    // v4: add classifications table
     this.version(4).stores({
       classifications: 'id, animalId, date',
     });
-    // v5: add embryo inventory tables
     this.version(5).stores({
       embryos: 'id',
       embryoPurchases: 'id, embryoId',
     });
-    // v6: add embryoId index to breedings
     this.version(6).stores({
       breedings: 'id, animalId, date, pregnancyCheckScheduledDate, bullId, embryoId',
+    });
+    // v7: pharmacy drug inventory
+    this.version(7).stores({
+      drugProducts: 'id',
+      treatments: 'id, animalId, date, resolved, milkWithholdUntil, drugProductId',
     });
   }
 }

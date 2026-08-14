@@ -2,12 +2,12 @@ import { Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp } from '@/db/computed';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill } from 'lucide-react';
 import { seedDemoData } from '@/db/seed';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 
 export function Home() {
   const [demoLoaded, setDemoLoaded] = useState(false);
@@ -27,8 +27,18 @@ export function Home() {
     const pregChecks = await db.pregnancyChecks.toArray();
     const treatments = await db.treatments.toArray();
     const settings = await db.settings.get('default');
+    const drugs = await db.drugProducts.toArray();
 
     if (!settings) return null;
+
+    // Drugs at or below 25% of their bottle size
+    const lowDrugs = drugs.filter(d => {
+      if (d.bottleSize && d.bottleSize > 0) {
+        return d.quantityOnHand <= d.bottleSize * 0.25;
+      }
+      // Fall back to low-stock threshold if no bottle size set
+      return d.quantityOnHand <= (d.lowStockThreshold ?? 1);
+    });
 
     return {
       summary: getHerdSummary(animals, settings),
@@ -37,7 +47,8 @@ export function Home() {
       breedingAttention: getBreedingAttentionList(animals, breedings, settings),
       dryOff: getDryOffList(animals, settings),
       calvings: getUpcomingCalvings(animals),
-      treatments: getTreatmentFollowUp(treatments, animals)
+      treatments: getTreatmentFollowUp(treatments, animals),
+      lowDrugs,
     };
   });
 
@@ -68,45 +79,96 @@ export function Home() {
         <SummaryCard title="Heifers" value={data.summary.heifers} />
       </div>
 
+      {/* Pharmacy Low Stock Widget */}
+      {data.lowDrugs.length > 0 && (
+        <div>
+          <Link href="/pharmacy">
+            <Card className="border-amber-400 bg-amber-50 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-amber-200 rounded-lg">
+                      <Pill className="h-4 w-4 text-amber-700" />
+                    </div>
+                    <p className="font-bold text-amber-900">Pharmacy — Low Stock</p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-amber-600" />
+                </div>
+                <div className="space-y-2">
+                  {data.lowDrugs.map(drug => {
+                    const pct = drug.bottleSize && drug.bottleSize > 0
+                      ? Math.max(0, Math.round((drug.quantityOnHand / drug.bottleSize) * 100))
+                      : null;
+                    const isEmpty = drug.quantityOnHand <= 0;
+                    return (
+                      <div key={drug.id} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <AlertTriangle className={`h-3.5 w-3.5 shrink-0 ${isEmpty ? 'text-destructive' : 'text-amber-600'}`} />
+                          <span className="text-sm font-semibold text-amber-900 truncate">{drug.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {pct !== null && (
+                            <div className="w-20 h-2 rounded-full bg-amber-200 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${isEmpty ? 'bg-destructive' : 'bg-amber-500'}`}
+                                style={{ width: `${Math.max(2, pct)}%` }}
+                              />
+                            </div>
+                          )}
+                          <span className={`text-xs font-bold tabular-nums ${isEmpty ? 'text-destructive' : 'text-amber-700'}`}>
+                            {drug.quantityOnHand} {drug.unit}
+                            {pct !== null ? ` (${pct}%)` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
+
       <div className="pt-2">
         <h2 className="text-lg font-bold mb-4 px-1 text-foreground">Today's Checklist</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <ChecklistCard 
-            title="Pregnancy Check" 
-            count={data.pregCheck.length} 
-            icon={<Stethoscope className="h-5 w-5 text-amber-600" />} 
-            href="/checklist/preg-check" 
+          <ChecklistCard
+            title="Pregnancy Check"
+            count={data.pregCheck.length}
+            icon={<Stethoscope className="h-5 w-5 text-amber-600" />}
+            href="/checklist/preg-check"
           />
-          <ChecklistCard 
-            title="Fresh Cow Check" 
-            count={data.fresh.length} 
-            icon={<Activity className="h-5 w-5 text-blue-600" />} 
-            href="/checklist/fresh-cow" 
+          <ChecklistCard
+            title="Fresh Cow Check"
+            count={data.fresh.length}
+            icon={<Activity className="h-5 w-5 text-blue-600" />}
+            href="/checklist/fresh-cow"
           />
-          <ChecklistCard 
-            title="Breeding Attention" 
-            count={data.breedingAttention.length} 
-            icon={<HeartPulse className="h-5 w-5 text-destructive" />} 
-            href="/checklist/breeding" 
+          <ChecklistCard
+            title="Breeding Attention"
+            count={data.breedingAttention.length}
+            icon={<HeartPulse className="h-5 w-5 text-destructive" />}
+            href="/checklist/breeding"
           />
-          <ChecklistCard 
-            title="Dry-Off Approaching" 
-            count={data.dryOff.length} 
-            icon={<Droplet className="h-5 w-5 text-gray-500" />} 
-            href="/checklist/dry-off" 
+          <ChecklistCard
+            title="Dry-Off Approaching"
+            count={data.dryOff.length}
+            icon={<Droplet className="h-5 w-5 text-gray-500" />}
+            href="/checklist/dry-off"
           />
-          <ChecklistCard 
-            title="Upcoming Calvings" 
-            count={data.calvings.due7Days.length + data.calvings.due30Days.length} 
-            icon={<Baby className="h-5 w-5 text-green-600" />} 
-            href="/checklist/calvings" 
+          <ChecklistCard
+            title="Upcoming Calvings"
+            count={data.calvings.due7Days.length + data.calvings.due30Days.length}
+            icon={<Baby className="h-5 w-5 text-green-600" />}
+            href="/checklist/calvings"
           />
-          <ChecklistCard 
-            title="Treatment Follow-Up" 
-            count={data.treatments.active.length} 
+          <ChecklistCard
+            title="Treatment Follow-Up"
+            count={data.treatments.active.length}
             subtitle={data.treatments.withholding.length > 0 ? `${data.treatments.withholding.length} withholding` : undefined}
-            icon={<CheckSquare className="h-5 w-5 text-purple-600" />} 
-            href="/checklist/treatments" 
+            icon={<CheckSquare className="h-5 w-5 text-purple-600" />}
+            href="/checklist/treatments"
             alert={data.treatments.withholding.length > 0}
           />
         </div>
@@ -126,7 +188,9 @@ function SummaryCard({ title, value }: { title: string; value: string | number }
   );
 }
 
-function ChecklistCard({ title, count, icon, href, subtitle, alert }: { title: string; count: number; icon: React.ReactNode; href: string; subtitle?: string; alert?: boolean }) {
+function ChecklistCard({ title, count, icon, href, subtitle, alert }: {
+  title: string; count: number; icon: React.ReactNode; href: string; subtitle?: string; alert?: boolean;
+}) {
   return (
     <Link href={href} className="block active-elevate hover-elevate">
       <Card className={`shadow-sm ${alert ? 'border-destructive/50 bg-destructive/5' : ''}`}>

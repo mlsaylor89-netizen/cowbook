@@ -25,6 +25,8 @@ import { EmbryoInventory } from '@/pages/EmbryoInventory';
 import { EmbryoDetail } from '@/pages/EmbryoDetail';
 import { EmbryoDonorForm } from '@/pages/EmbryoDonorForm';
 import { EmbryoPurchaseForm } from '@/pages/EmbryoPurchaseForm';
+import { PharmacyInventory } from '@/pages/PharmacyInventory';
+import { DrugForm } from '@/pages/DrugForm';
 import { MoreMenu } from '@/pages/MoreMenu';
 import { Reports } from '@/pages/Reports';
 import { PrintReport } from '@/pages/PrintReport';
@@ -69,6 +71,10 @@ function Router() {
           <Route path="/embryo/new" component={EmbryoDonorForm} />
           <Route path="/embryo/:id/purchase" component={EmbryoPurchaseForm} />
           <Route path="/embryo/:id" component={EmbryoDetail} />
+
+          <Route path="/pharmacy" component={PharmacyInventory} />
+          <Route path="/pharmacy/new" component={DrugForm} />
+          <Route path="/pharmacy/:id/edit" component={DrugForm} />
           
           <Route path="/more" component={MoreMenu} />
           <Route path="/reports" component={Reports} />

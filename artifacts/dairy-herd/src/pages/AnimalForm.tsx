@@ -31,6 +31,7 @@ const formSchema = z.object({
   status: z.enum(['Lactating', 'Dry', 'Heifer', 'BredHeifer', 'Pregnant', 'Open', 'Sold', 'Dead']),
   lactationNumber: z.coerce.number().min(0),
   rfidTag: z.string().optional(),
+  lastCalvingDate: z.string().optional(),
   // Service sire — shown when status is BredHeifer or Pregnant
   breedingDate: z.string().optional(),
   breedingType: z.enum(['AI', 'NaturalService', 'Embryo']).optional(),
@@ -64,6 +65,7 @@ export function AnimalForm() {
       status: 'Heifer',
       lactationNumber: 0,
       rfidTag: '',
+      lastCalvingDate: '',
       breedingDate: format(new Date(), 'yyyy-MM-dd'),
       breedingType: 'AI',
       serviceBullId: '',
@@ -97,6 +99,7 @@ export function AnimalForm() {
             status: animal.status,
             lactationNumber: animal.lactationNumber,
             rfidTag: animal.rfidTag || '',
+            lastCalvingDate: animal.lastCalvingDate ? animal.lastCalvingDate.slice(0, 10) : '',
             breedingDate: format(new Date(), 'yyyy-MM-dd'),
             breedingType: 'AI',
             serviceBullId: '',
@@ -125,7 +128,18 @@ export function AnimalForm() {
     const now = new Date().toISOString();
 
     if (isEdit && id) {
-      await db.animals.update(id, { ...values, updatedAt: now });
+      await db.animals.update(id, {
+        number: values.number,
+        name: values.name,
+        breed: values.breed,
+        status: values.status,
+        lactationNumber: values.lactationNumber,
+        rfidTag: values.rfidTag || undefined,
+        lastCalvingDate: values.lastCalvingDate
+          ? new Date(values.lastCalvingDate).toISOString()
+          : undefined,
+        updatedAt: now,
+      });
       setLocation(`/herd/${id}`);
       return;
     }
@@ -152,6 +166,9 @@ export function AnimalForm() {
       status: values.status,
       lactationNumber: values.lactationNumber,
       rfidTag: values.rfidTag || undefined,
+      lastCalvingDate: values.lastCalvingDate
+        ? new Date(values.lastCalvingDate).toISOString()
+        : undefined,
       expectedCalvingDate,
       expectedDryOffDate,
       createdAt: now,
@@ -264,6 +281,17 @@ export function AnimalForm() {
                   </FormItem>
                 )} />
               </div>
+
+              {/* Last Calving Date — shown for cows that have calved */}
+              {['Lactating', 'Dry', 'Pregnant', 'Open'].includes(status) && (
+                <FormField control={form.control} name="lastCalvingDate" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Calving Date</FormLabel>
+                    <FormControl><Input type="date" className="h-12" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
 
               {/* ── Service Sire Section ── */}
               {showBreedingSection && (

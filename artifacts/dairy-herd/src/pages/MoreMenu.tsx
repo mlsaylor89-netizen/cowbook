@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Settings, Printer, DownloadCloud, Activity, Droplet, ClipboardList, Dna, FlaskConical } from 'lucide-react';
+import { ChevronRight, Settings, Printer, DownloadCloud, Activity, Droplet, ClipboardList, Dna, FlaskConical, Pill } from 'lucide-react';
 
 export function MoreMenu() {
   return (
@@ -13,6 +13,7 @@ export function MoreMenu() {
         <MenuLink href="/checklist/treatments" icon={<Droplet className="h-5 w-5 text-rose-600" />} title="Active Treatments & Withholds" />
         <MenuLink href="/semen" icon={<Dna className="h-5 w-5 text-cyan-600" />} title="Semen Inventory" />
         <MenuLink href="/embryo" icon={<FlaskConical className="h-5 w-5 text-violet-600" />} title="Embryo Inventory" />
+        <MenuLink href="/pharmacy" icon={<Pill className="h-5 w-5 text-emerald-600" />} title="Pharmacy" />
         <MenuLink href="/print-report" icon={<Printer className="h-5 w-5 text-gray-600" />} title="Print Daily Worksheet" />
       </div>
 
