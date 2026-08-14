@@ -146,20 +146,25 @@ export function BreedingForm() {
                 )}
               />
 
-              {breedingType === 'AI' && (
+              {(breedingType === 'AI' || breedingType === 'NaturalService') && (
                 <FormField
                   control={form.control}
                   name="bullId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Semen/Bull</FormLabel>
+                      <FormLabel>
+                        {breedingType === 'AI' ? 'Semen / Bull' : 'Exposed to Bull'}
+                      </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="h-12 text-lg">
-                            <SelectValue placeholder="Select bull" />
+                            <SelectValue placeholder={breedingType === 'AI' ? 'Select bull' : 'Select bull (optional)'} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          {breedingType === 'NaturalService' && (
+                            <SelectItem value="">Unknown / Not recorded</SelectItem>
+                          )}
                           {bulls.map(b => (
                             <SelectItem key={b.id} value={b.id}>
                               {b.name}

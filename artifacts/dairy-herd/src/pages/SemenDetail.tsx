@@ -1,14 +1,35 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import { Link, useRoute } from 'wouter';
+import { Link, useRoute, useLocation } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export function SemenDetail() {
   const [match, params] = useRoute('/semen/:id');
   const id = params?.id;
+  const [, setLocation] = useLocation();
+
+  async function removeBull() {
+    if (!id) return;
+    await Promise.all([
+      db.semenBulls.delete(id),
+      db.semenPurchases.where('bullId').equals(id).delete(),
+    ]);
+    setLocation('/semen');
+  }
 
   const data = useLiveQuery(async () => {
     if (!id) return null;
@@ -48,6 +69,34 @@ export function SemenDetail() {
       </Card>
 
       <Button className="w-full h-14 text-lg font-bold" disabled>Record Purchase</Button>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full h-12 border-destructive text-destructive hover:bg-destructive hover:text-white"
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Remove Bull
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {bull.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this bull and all purchase records. Existing breeding records that used this bull will be kept for history. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={removeBull}
+            >
+              Yes, Remove Bull
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="space-y-4">
         <h3 className="text-lg font-bold">Purchase History</h3>
