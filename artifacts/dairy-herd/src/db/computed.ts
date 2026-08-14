@@ -238,4 +238,21 @@ export async function processCalving(data: Omit<Calving, 'id' | 'createdAt' | 'u
     lactationNumber: animal.lactationNumber + 1,
     updatedAt: now
   });
+
+  // Auto-create a heifer record for female calves
+  if (data.calfSex === 'Heifer' || data.calfSex === 'Twins') {
+    await db.animals.add({
+      id: crypto.randomUUID(),
+      farmId: animal.farmId,
+      number: '00',
+      name: `Calf of ${animal.number}`,
+      breed: animal.breed,
+      status: 'Heifer',
+      lactationNumber: 0,
+      birthDate: data.calvingDate,
+      notes: `Born ${new Date(data.calvingDate).toLocaleDateString()}. Dam: ${animal.number} ${animal.name}.${data.notes ? ' ' + data.notes : ''}`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
 }
