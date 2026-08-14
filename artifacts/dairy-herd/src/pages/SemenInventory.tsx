@@ -1,11 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import { Link } from 'wouter';
+import { useLocation } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, AlertTriangle } from 'lucide-react';
 
 export function SemenInventory() {
+  const [, navigate] = useLocation();
+
   const data = useLiveQuery(async () => {
     const bulls = await db.semenBulls.toArray();
     const purchases = await db.semenPurchases.toArray();
@@ -17,12 +19,7 @@ export function SemenInventory() {
       const totalBought = bullPurchases.reduce((sum, p) => sum + p.unitsCount, 0);
       const totalUsed = breedings.filter(b => b.bullId === bull.id).length;
       const inventory = totalBought - totalUsed;
-      
-      return {
-        bull,
-        inventory,
-        isLow: inventory <= (settings?.lowSemenThreshold || 2)
-      };
+      return { bull, inventory, isLow: inventory <= (settings?.lowSemenThreshold || 2) };
     });
   });
 
@@ -30,11 +27,9 @@ export function SemenInventory() {
     <div className="space-y-4 max-w-3xl mx-auto pb-20">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Semen Inventory</h2>
-        <Link href="/semen/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" /> Add Bull
-          </Button>
-        </Link>
+        <Button size="sm" onClick={() => navigate('/semen/new')}>
+          <Plus className="h-4 w-4 mr-2" /> Add Bull
+        </Button>
       </div>
 
       {data === undefined ? (
@@ -46,18 +41,33 @@ export function SemenInventory() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {data.map(({ bull, inventory, isLow }) => (
-            <Link key={bull.id} href={`/semen/${bull.id}`} className="block active-elevate hover-elevate">
+            <div
+              key={bull.id}
+              className="cursor-pointer active-elevate hover-elevate"
+              onClick={() => navigate(`/semen/${bull.id}`)}
+            >
               <Card className={`shadow-sm ${isLow ? 'border-amber-500' : ''}`}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-lg">{bull.name}</p>
-                    <p className="text-sm text-muted-foreground">{bull.studCompany}</p>
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-lg truncate">{bull.name}</p>
+                    <p className="text-sm text-muted-foreground truncate">{bull.studCompany}</p>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-2xl font-bold ${isLow ? 'text-amber-600' : 'text-primary'}`}>
-                      {inventory}
-                    </p>
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Units</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-right">
+                      <p className={`text-2xl font-bold ${isLow ? 'text-amber-600' : 'text-primary'}`}>
+                        {inventory}
+                      </p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Units</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 w-9 p-0 shrink-0"
+                      title="Add units"
+                      onClick={e => { e.stopPropagation(); navigate(`/semen/${bull.id}/purchase`); }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
                 {isLow && (
@@ -66,7 +76,7 @@ export function SemenInventory() {
                   </div>
                 )}
               </Card>
-            </Link>
+            </div>
           ))}
         </div>
       )}
