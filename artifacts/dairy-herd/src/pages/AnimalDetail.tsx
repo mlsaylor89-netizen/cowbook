@@ -6,9 +6,10 @@ import { Link, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { StatusBadge } from './HerdList';
+import type { ClassificationScore } from '@/db';
 
 export function AnimalDetail() {
   const [match, params] = useRoute('/herd/:id');
@@ -24,14 +25,15 @@ export function AnimalDetail() {
     const treatments = await db.treatments.where('animalId').equals(id).reverse().sortBy('date');
     const pregChecks = await db.pregnancyChecks.where('animalId').equals(id).reverse().sortBy('checkDate');
     const notes = await db.animalNotes.where('animalId').equals(id).reverse().sortBy('createdAt');
+    const classifications = await db.classifications.where('animalId').equals(id).reverse().sortBy('date');
 
-    return { animal, breedings, calvings, treatments, pregChecks, notes };
+    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications };
   }, [id]);
 
   if (data === undefined) return <div className="p-4">Loading...</div>;
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
-  const { animal, breedings, calvings, treatments, pregChecks, notes } = data;
+  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications } = data;
   const dim = getDIM(animal);
 
   return (
@@ -144,8 +146,96 @@ export function AnimalDetail() {
         </div>
       </div>
 
+      {/* Classifications */}
+      <ClassificationsSection animalId={animal.id} classifications={classifications} />
+
       {/* Notes */}
       <NotesSection animalId={animal.id} notes={notes} />
+    </div>
+  );
+}
+
+const SCORE_LABEL: Record<string, string> = {
+  E: 'Excellent', VG: 'Very Good', 'G+': 'Good Plus', G: 'Good', F: 'Fair', P: 'Poor',
+};
+const SCORE_COLOR: Record<string, string> = {
+  E: 'text-emerald-700 bg-emerald-50 border-emerald-300',
+  VG: 'text-green-700 bg-green-50 border-green-300',
+  'G+': 'text-lime-700 bg-lime-50 border-lime-300',
+  G: 'text-yellow-700 bg-yellow-50 border-yellow-300',
+  F: 'text-orange-700 bg-orange-50 border-orange-300',
+  P: 'text-red-700 bg-red-50 border-red-300',
+};
+
+const TRAIT_LABELS: Record<string, string> = {
+  stature: 'Stature', strength: 'Strength', bodyDepth: 'Body Depth', dairyForm: 'Dairy Form',
+  footAngle: 'Foot Angle', rearLegs: 'Rear Legs',
+  foreUdderAttachment: 'Fore Udder', rearUdderHeight: 'Rear Udder Ht', rearUdderWidth: 'Rear Udder W',
+  udderCleft: 'Udder Cleft', udderDepth: 'Udder Depth', frontTeatPlacement: 'Front Teats',
+  rearTeatPlacement: 'Rear Teats', teatLength: 'Teat Length',
+};
+const TRAIT_KEYS = Object.keys(TRAIT_LABELS);
+
+function ClassificationsSection({ animalId, classifications }: { animalId: string; classifications: ClassificationScore[] }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Award className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-bold">Classification</h3>
+        </div>
+        <Link href={`/classification?animalId=${animalId}`}>
+          <Button size="sm" variant="outline">+ Add</Button>
+        </Link>
+      </div>
+
+      {classifications.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-2">No classification records yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {classifications.map(c => {
+            const filled = TRAIT_KEYS.filter(k => (c as any)[k] != null);
+            return (
+              <Card key={c.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">{format(parseISO(c.date), 'MMM d, yyyy')}{c.classifier ? ` · ${c.classifier}` : ''}</p>
+                      {c.finalScore && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`inline-block border rounded px-2 py-0.5 text-sm font-bold ${SCORE_COLOR[c.finalScore]}`}>
+                            {c.finalScore}
+                          </span>
+                          <span className="font-semibold text-sm">{SCORE_LABEL[c.finalScore]}</span>
+                          {c.finalPoints && <span className="text-sm text-muted-foreground">({c.finalPoints} pts)</span>}
+                        </div>
+                      )}
+                    </div>
+                    <Link href={`/classification?animalId=${animalId}&editId=${c.id}`}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {filled.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
+                      {filled.map(k => (
+                        <div key={k} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{TRAIT_LABELS[k]}</span>
+                          <span className="font-bold ml-2">{(c as any)[k]}/9</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {c.notes && <p className="text-xs text-muted-foreground italic">{c.notes}</p>}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -75,6 +75,36 @@ export interface Treatment {
   updatedAt: string;
 }
 
+export interface ClassificationScore {
+  id: string;
+  animalId: string;
+  date: string;
+  classifier?: string;
+  // Overall
+  finalScore?: 'E' | 'VG' | 'G+' | 'G' | 'F' | 'P';
+  finalPoints?: number;
+  // Frame (1–9 linear)
+  stature?: number;
+  strength?: number;
+  bodyDepth?: number;
+  dairyForm?: number;
+  // Feet & Legs (1–9)
+  footAngle?: number;
+  rearLegs?: number;
+  // Udder (1–9)
+  foreUdderAttachment?: number;
+  rearUdderHeight?: number;
+  rearUdderWidth?: number;
+  udderCleft?: number;
+  udderDepth?: number;
+  frontTeatPlacement?: number;
+  rearTeatPlacement?: number;
+  teatLength?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AnimalNote {
   id: string;
   animalId: string;
@@ -130,6 +160,7 @@ export class DairyHerdDB extends Dexie {
   semenPurchases!: Table<SemenPurchase, string>;
   settings!: Table<Settings, string>;
   animalNotes!: Table<AnimalNote, string>;
+  classifications!: Table<ClassificationScore, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -150,6 +181,10 @@ export class DairyHerdDB extends Dexie {
     // v3: add animalNotes table
     this.version(3).stores({
       animalNotes: 'id, animalId, createdAt',
+    });
+    // v4: add classifications table
+    this.version(4).stores({
+      classifications: 'id, animalId, date',
     });
   }
 }

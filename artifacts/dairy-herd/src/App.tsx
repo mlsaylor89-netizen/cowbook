@@ -29,6 +29,7 @@ import { TreatmentForm } from '@/pages/TreatmentForm';
 import { TreatmentLog } from '@/pages/TreatmentLog';
 import { CalvingForm } from '@/pages/CalvingForm';
 import { PregCheckForm } from '@/pages/PregCheckForm';
+import { ClassificationForm } from '@/pages/ClassificationForm';
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ function Router() {
           <Route path="/breeding" component={BreedingForm} />
           <Route path="/treatment" component={TreatmentForm} />
           <Route path="/treatment-log" component={TreatmentLog} />
+          <Route path="/classification" component={ClassificationForm} />
           <Route path="/calving" component={CalvingForm} />
           <Route path="/preg-check" component={PregCheckForm} />
           
