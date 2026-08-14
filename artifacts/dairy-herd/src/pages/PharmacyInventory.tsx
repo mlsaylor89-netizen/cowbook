@@ -26,7 +26,10 @@ export function PharmacyInventory() {
   const [dialog, setDialog] = useState<DialogMode>(null);
   const [restockQty, setRestockQty] = useState('');
 
-  const drugs = useLiveQuery(() => db.drugProducts.orderBy('name').toArray());
+  const drugs = useLiveQuery(async () => {
+    const all = await db.drugProducts.toArray();
+    return all.sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   async function handleRestock() {
     if (dialog?.type !== 'restock') return;

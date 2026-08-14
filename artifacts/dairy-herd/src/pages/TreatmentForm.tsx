@@ -39,7 +39,7 @@ export function TreatmentForm() {
 
   const { animals, drugs } = useLiveQuery(async () => ({
     animals: await db.animals.toArray(),
-    drugs: await db.drugProducts.orderBy('name').toArray(),
+    drugs: (await db.drugProducts.toArray()).sort((a, b) => a.name.localeCompare(b.name)),
   })) ?? { animals: [], drugs: [] };
 
   const form = useForm<FormValues>({
