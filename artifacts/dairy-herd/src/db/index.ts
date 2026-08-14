@@ -135,6 +135,10 @@ export class DairyHerdDB extends Dexie {
       semenPurchases: 'id, bullId',
       settings: 'id'
     });
+    // v2: add bullId index to breedings so SemenDetail can query usage by bull
+    this.version(2).stores({
+      breedings: 'id, animalId, date, pregnancyCheckScheduledDate, bullId',
+    });
   }
 }
 

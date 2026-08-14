@@ -25,6 +25,7 @@ import { PrintReport } from '@/pages/PrintReport';
 import { Settings } from '@/pages/Settings';
 import { Backup } from '@/pages/Backup';
 import { Checklist } from '@/pages/Checklist';
+import { TreatmentForm } from '@/pages/TreatmentForm';
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/herd/:id" component={AnimalDetail} />
           
           <Route path="/breeding" component={BreedingForm} />
+          <Route path="/treatment" component={TreatmentForm} />
           
           <Route path="/semen" component={SemenInventory} />
           <Route path="/semen/:id" component={SemenDetail} />

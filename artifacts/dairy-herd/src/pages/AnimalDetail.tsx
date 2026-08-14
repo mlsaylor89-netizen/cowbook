@@ -63,9 +63,11 @@ export function AnimalDetail() {
         <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border" disabled>
           <Activity className="h-4 w-4 mr-2 text-blue-600" /> Preg Check
         </Button>
-        <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border" disabled>
-          <Droplet className="h-4 w-4 mr-2 text-purple-600" /> Treat
-        </Button>
+        <Link href={`/treatment?animalId=${animal.id}`} className="block">
+          <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
+            <Droplet className="h-4 w-4 mr-2 text-purple-600" /> Treat
+          </Button>
+        </Link>
       </div>
 
       {/* Info Card */}
