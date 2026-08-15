@@ -38,7 +38,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        await loadUserDoc(u);
+        try {
+          await loadUserDoc(u);
+        } catch (err) {
+          // Firestore may be unavailable (permission denied, network error,
+          // IndexedDB conflict, etc.). Log it but always clear the spinner so
+          // the user isn't stuck on a white loading screen.
+          console.error('[auth] Failed to load user doc:', err);
+        }
       } else {
         setUserDoc(null);
         stopSync();
