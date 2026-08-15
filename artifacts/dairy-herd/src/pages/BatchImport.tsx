@@ -142,8 +142,8 @@ async function importSemen(rows: Record<string, string>[]): Promise<RowResult[]>
     if (!bullName) { results.push({ row: rowNum, status: 'error', message: 'Missing bull name', name: naabCode || `Row ${rowNum}` }); continue; }
     if (!r.breed)  { results.push({ row: rowNum, status: 'error', message: 'Missing breed', name: bullName }); continue; }
 
-    const unitsRaw = parseInt(r.units || '0', 10);
-    if (!unitsRaw || unitsRaw <= 0) { results.push({ row: rowNum, status: 'error', message: 'Units must be > 0', name: bullName }); continue; }
+    const unitsRaw = parseInt(r.units || '0', 10) || 0;
+    if (unitsRaw <= 0) { results.push({ row: rowNum, status: 'skip', message: 'No units specified — skipped', name: bullName }); continue; }
 
     const purchaseDate = r.purchasedate || r['purchase date'] || r.date || new Date().toISOString().slice(0, 10);
 
@@ -203,8 +203,8 @@ async function importEmbryos(rows: Record<string, string>[]): Promise<RowResult[
     if (!donorName) { results.push({ row: rowNum, status: 'error', message: 'Missing donor name', name: `Row ${rowNum}` }); continue; }
     if (!r.breed)   { results.push({ row: rowNum, status: 'error', message: 'Missing breed', name: donorName }); continue; }
 
-    const unitsRaw = parseInt(r.units || '0', 10);
-    if (!unitsRaw || unitsRaw <= 0) { results.push({ row: rowNum, status: 'error', message: 'Units must be > 0', name: donorName }); continue; }
+    const unitsRaw = parseInt(r.units || '0', 10) || 0;
+    if (unitsRaw <= 0) { results.push({ row: rowNum, status: 'skip', message: 'No units specified — skipped', name: donorName }); continue; }
 
     const purchaseDate = r.purchasedate || r['purchase date'] || r.date || new Date().toISOString().slice(0, 10);
 
