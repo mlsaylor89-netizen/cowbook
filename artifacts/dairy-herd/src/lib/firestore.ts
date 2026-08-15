@@ -1,29 +1,38 @@
 import {
   initializeFirestore,
   getFirestore,
-  memoryLocalCache,
+  persistentLocalCache,
+  persistentSingleTabManager,
   type Firestore,
 } from 'firebase/firestore';
 import { firebaseApp } from './firebase';
 
 /**
- * Firestore singleton using in-memory cache.
+ * Firestore singleton with IndexedDB-backed persistent cache.
  *
- * We intentionally avoid IndexedDB persistence (persistentLocalCache) here
- * because stale IndexedDB locks left by the previous app version cause
- * failed-precondition errors that make every Firestore write hang
- * indefinitely. Offline storage for herd data is handled by Dexie.js,
- * so Firestore only needs to be a reliable sync channel — memory cache
- * is sufficient for that role.
+ * persistentLocalCache means the initial 16-collection snapshot is served
+ * from IndexedDB on every session after the first, eliminating the burst of
+ * Dexie write transactions that previously blocked useLiveQuery calls and
+ * made pages appear to load forever.
+ *
+ * forceOwnership: true lets this tab claim the IndexedDB lock even if a
+ * stale lock from a previous session or crashed tab is present — this is
+ * what previously caused "failed-precondition" write hangs when the app
+ * used persistentMultipleTabManager. Single-tab mode + forceOwnership avoids
+ * that entirely.
+ *
+ * The stale databases from the old persistentMultipleTabManager config are
+ * deleted in main.tsx before this module runs.
  *
  * The try/catch handles HMR: Vite hot-reloads re-run this module, but
- * initializeFirestore throws if the SDK is already initialised for this
- * app. getFirestore() returns the existing instance in that case.
+ * initializeFirestore throws if the SDK is already initialised for this app.
  */
 let _firestore: Firestore;
 try {
   _firestore = initializeFirestore(firebaseApp, {
-    localCache: memoryLocalCache(),
+    localCache: persistentLocalCache({
+      tabManager: persistentSingleTabManager({ forceOwnership: true }),
+    }),
   });
 } catch {
   _firestore = getFirestore(firebaseApp);
