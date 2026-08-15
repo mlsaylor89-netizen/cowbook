@@ -39,6 +39,7 @@ import { TreatmentLog } from '@/pages/TreatmentLog';
 import { CalvingForm } from '@/pages/CalvingForm';
 import { PregCheckForm } from '@/pages/PregCheckForm';
 import { ClassificationForm } from '@/pages/ClassificationForm';
+import { RecordHeat } from '@/pages/RecordHeat';
 
 // Firebase auth + sync
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -140,6 +141,8 @@ function Router() {
           <Route path="/pharmacy/new" component={DrugForm} />
           <Route path="/pharmacy/:id/edit" component={DrugForm} />
           
+          <Route path="/heat" component={RecordHeat} />
+
           <Route path="/more" component={MoreMenu} />
           <Route path="/reports" component={Reports} />
           <Route path="/print-report" component={PrintReport} />

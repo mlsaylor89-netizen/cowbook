@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill } from 'lucide-react';
+import { HeatAlerts } from '@/pages/HeatAlerts';
 import { seedDemoData } from '@/db/seed';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,9 @@ export function Home() {
           </Button>
         </div>
       )}
+
+      {/* Heat Alarms */}
+      <HeatAlerts />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

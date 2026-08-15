@@ -200,6 +200,20 @@ export interface Settings {
   updatedAt: string;
 }
 
+export interface HeatObservation {
+  id: string;
+  animalId: string;
+  farmId: string;
+  observedAt: string;        // ISO — when heat was seen
+  breedingType: 'conventional' | 'sexed';
+  scheduledBreedAt: string;  // observedAt + 12 h (conventional) or + 30 h (sexed)
+  alertAt: string;           // scheduledBreedAt − 1 h
+  status: 'pending' | 'bred' | 'missed';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class DairyHerdDB extends Dexie {
   animals!: Table<Animal, string>;
   breedings!: Table<Breeding, string>;
@@ -214,6 +228,7 @@ export class DairyHerdDB extends Dexie {
   embryos!: Table<Embryo, string>;
   embryoPurchases!: Table<EmbryoPurchase, string>;
   drugProducts!: Table<DrugProduct, string>;
+  heats!: Table<HeatObservation, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -247,6 +262,10 @@ export class DairyHerdDB extends Dexie {
     this.version(7).stores({
       drugProducts: 'id',
       treatments: 'id, animalId, date, resolved, milkWithholdUntil, drugProductId',
+    });
+    // v8: heat observations & alarms
+    this.version(8).stores({
+      heats: 'id, animalId, farmId, status, scheduledBreedAt',
     });
   }
 }

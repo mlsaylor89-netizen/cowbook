@@ -49,6 +49,7 @@ const COLLECTIONS = [
   'embryoPurchases',
   'drugProducts',
   'settings',
+  'heats',
 ] as const;
 
 type CollName = (typeof COLLECTIONS)[number];

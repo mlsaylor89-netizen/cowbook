@@ -6,7 +6,7 @@ import { Link, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { LactationBadge, ReproBadge } from './HerdList';
 import { lactStat, reproStat } from '@/db/computed';
@@ -61,6 +61,11 @@ export function AnimalDetail() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <Link href={`/heat?animalId=${animal.id}`} className="block">
+          <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
+            <Thermometer className="h-4 w-4 mr-2 text-rose-500" /> Heat
+          </Button>
+        </Link>
         <Link href={`/breeding?animalId=${animal.id}`} className="block">
           <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
             <Heart className="h-4 w-4 mr-2 text-destructive" /> Breed

@@ -14,6 +14,7 @@ import {
   LogOut,
   User,
   FileUp,
+  Thermometer,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 
@@ -25,6 +26,7 @@ export function MoreMenu() {
       <h2 className="text-2xl font-bold mb-4">More</h2>
 
       <div className="space-y-2">
+        <MenuLink href="/heat" icon={<Thermometer className="h-5 w-5 text-rose-500" />} title="Record Heat / Alarm" />
         <MenuLink href="/reports" icon={<Activity className="h-5 w-5 text-blue-600" />} title="Herd Reports & Metrics" />
         <MenuLink href="/treatment-log" icon={<ClipboardList className="h-5 w-5 text-purple-600" />} title="Treatment Log" />
         <MenuLink href="/checklist/treatments" icon={<Droplet className="h-5 w-5 text-rose-600" />} title="Active Treatments & Withholds" />
