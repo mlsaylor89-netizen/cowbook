@@ -272,15 +272,6 @@ function FarmUsersSection() {
     }
   }
 
-  if (loadingFarm) {
-    return (
-      <div className="space-y-3">
-        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider px-1">Farm / Users</h3>
-        <Card><CardContent className="p-4 text-sm text-muted-foreground">Loading…</CardContent></Card>
-      </div>
-    );
-  }
-
   async function handleRepair(e: React.FormEvent) {
     e.preventDefault();
     if (!farmId || !user) return;
@@ -301,6 +292,15 @@ function FarmUsersSection() {
     } finally {
       setRepairing(false);
     }
+  }
+
+  if (loadingFarm) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider px-1">Farm / Users</h3>
+        <Card><CardContent className="p-4 text-sm text-muted-foreground">Loading…</CardContent></Card>
+      </div>
+    );
   }
 
   if (!farm) {

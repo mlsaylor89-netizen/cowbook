@@ -133,19 +133,32 @@ function subscribeFarm(farmId: string) {
 
     const unsub = onSnapshot(
       collRef,
-      (snapshot) => {
-        snapshot.docChanges().forEach(async (change) => {
-          const id = change.doc.id;
+      async (snapshot) => {
+        const changes = snapshot.docChanges();
+        if (!changes.length) return;
 
-          if (change.type === 'added' || change.type === 'modified') {
-            const data = { ...change.doc.data(), id };
-            syncingIds.add(id);
-            await table.put(data).catch(() => syncingIds.delete(id));
-          } else if (change.type === 'removed') {
-            syncingIds.add(id);
-            await table.delete(id).catch(() => syncingIds.delete(id));
-          }
-        });
+        // Mark all IDs as syncing-from-cloud BEFORE any writes so the
+        // Dexie hooks don't echo them back to Firestore.
+        for (const change of changes) syncingIds.add(change.doc.id);
+
+        // Batch all puts/deletes in one Dexie transaction so useLiveQuery
+        // re-renders exactly once per snapshot event, not once per document.
+        try {
+          await db.transaction('rw', table, async () => {
+            for (const change of changes) {
+              const id = change.doc.id;
+              if (change.type === 'added' || change.type === 'modified') {
+                await table.put({ ...change.doc.data(), id });
+              } else if (change.type === 'removed') {
+                await table.delete(id);
+              }
+            }
+          });
+        } catch (err: unknown) {
+          // On failure, clear the IDs so the hooks don't permanently suppress writes.
+          for (const change of changes) syncingIds.delete(change.doc.id);
+          console.error(`[sync] batch write to ${collName}:`, (err as Error).message);
+        }
       },
       (err: Error) =>
         console.error(`[sync] snapshot(${collName}):`, err.message),
