@@ -15,21 +15,26 @@ export function Home() {
   const [demoLoaded, setDemoLoaded] = useState(false);
 
   useEffect(() => {
-    seedDemoData().then(() => {
-      if (localStorage.getItem('demoLoaded') !== 'true') {
+    // Only run seed if it hasn't already been marked done — avoids an async
+    // DB round-trip on every mount for established users.
+    if (localStorage.getItem('demoLoaded') !== 'true') {
+      seedDemoData().then(() => {
         localStorage.setItem('demoLoaded', 'true');
         setDemoLoaded(true);
-      }
-    });
+      });
+    }
   }, []);
 
   const data = useLiveQuery(async () => {
-    const animals = await db.animals.toArray();
-    const breedings = await db.breedings.toArray();
-    const pregChecks = await db.pregnancyChecks.toArray();
-    const treatments = await db.treatments.toArray();
-    const settings = await db.settings.get('default');
-    const drugs = await db.drugProducts.toArray();
+    // Fetch all six collections in parallel rather than sequentially.
+    const [animals, breedings, pregChecks, treatments, settings, drugs] = await Promise.all([
+      db.animals.toArray(),
+      db.breedings.toArray(),
+      db.pregnancyChecks.toArray(),
+      db.treatments.toArray(),
+      db.settings.get('default'),
+      db.drugProducts.toArray(),
+    ]);
 
     if (!settings) return null;
 
@@ -55,8 +60,12 @@ export function Home() {
     };
   });
 
-  if (!data) {
-    return <div className="p-4 text-center text-muted-foreground">Loading herd data...</div>;
+  // undefined = query still running; null = settings row missing (new farm)
+  if (data === undefined) {
+    return <div className="p-4 text-center text-muted-foreground">Loading herd data…</div>;
+  }
+  if (data === null) {
+    return <div className="p-4 text-center text-muted-foreground">Finishing setup — this only takes a moment…</div>;
   }
 
   return (

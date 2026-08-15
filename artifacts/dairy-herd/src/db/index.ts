@@ -309,3 +309,11 @@ export class DairyHerdDB extends Dexie {
 }
 
 export const db = new DairyHerdDB();
+
+// When a newer version of the app opens the DB in another tab, this tab must
+// release its connection immediately or every useLiveQuery call blocks forever
+// waiting for a DB that can never finish upgrading.
+db.on('versionchange', () => {
+  db.close();
+  window.location.reload();
+});
