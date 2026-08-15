@@ -17,6 +17,7 @@ const formSchema = z.object({
   animalId: z.string().min(1, 'Cow is required'),
   date: z.string().min(1, 'Date is required'),
   bullId: z.string().optional(),
+  naturalServiceBullName: z.string().optional(),
   embryoId: z.string().optional(),
   breedingType: z.enum(['AI', 'NaturalService', 'Embryo']),
   technician: z.string().optional(),
@@ -48,6 +49,7 @@ export function BreedingForm() {
       date: format(new Date(), 'yyyy-MM-dd'),
       breedingType: 'AI',
       bullId: '',
+      naturalServiceBullName: '',
       embryoId: '',
       technician: '',
     },
@@ -65,7 +67,10 @@ export function BreedingForm() {
       animalId: values.animalId,
       date: breedingDate,
       breedingType: values.breedingType,
-      bullId: values.breedingType !== 'Embryo' ? (values.bullId || undefined) : undefined,
+      bullId: values.breedingType === 'AI' ? (values.bullId || undefined) : undefined,
+      naturalServiceBullName: values.breedingType === 'NaturalService'
+        ? (values.naturalServiceBullName?.trim() || undefined)
+        : undefined,
       embryoId: values.breedingType === 'Embryo' ? (values.embryoId || undefined) : undefined,
       technician: values.technician,
       pregnancyCheckScheduledDate: pregCheckDate
@@ -159,25 +164,20 @@ export function BreedingForm() {
                 )}
               />
 
-              {(breedingType === 'AI' || breedingType === 'NaturalService') && (
+              {breedingType === 'AI' && (
                 <FormField
                   control={form.control}
                   name="bullId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        {breedingType === 'AI' ? 'Semen / Bull' : 'Exposed to Bull'}
-                      </FormLabel>
+                      <FormLabel>Semen / Bull</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="h-12 text-lg">
-                            <SelectValue placeholder={breedingType === 'AI' ? 'Select bull' : 'Select bull (optional)'} />
+                            <SelectValue placeholder="Select bull" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {breedingType === 'NaturalService' && (
-                            <SelectItem value="">Unknown / Not recorded</SelectItem>
-                          )}
                           {bulls.map(b => (
                             <SelectItem key={b.id} value={b.id}>
                               {b.name}{b.naabCode ? ` — ${b.naabCode}` : ''}
@@ -185,6 +185,22 @@ export function BreedingForm() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {breedingType === 'NaturalService' && (
+                <FormField
+                  control={form.control}
+                  name="naturalServiceBullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bull Name</FormLabel>
+                      <FormControl>
+                        <Input className="h-12 text-lg" placeholder="e.g. Big Red, Reg. #12345 (optional)" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

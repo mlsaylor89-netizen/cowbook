@@ -29,7 +29,8 @@ export interface Breeding {
   id: string;
   animalId: string;
   date: string;
-  bullId?: string;
+  bullId?: string;                      // AI: semen inventory bull
+  naturalServiceBullName?: string;      // Natural Service: free-text bull name
   embryoId?: string;
   breedingType: 'AI' | 'NaturalService' | 'Embryo';
   technician?: string;

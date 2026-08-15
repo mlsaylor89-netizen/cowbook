@@ -42,6 +42,7 @@ const formSchema = z.object({
   breedingDate: z.string().optional(),
   breedingType: z.enum(['AI', 'NaturalService', 'Embryo']).optional(),
   serviceBullId: z.string().optional(),
+  naturalServiceBullName: z.string().optional(),
   serviceEmbryoId: z.string().optional(),
   expectedCalvingDate: z.string().optional(),
 });
@@ -94,6 +95,7 @@ export function AnimalForm() {
       breedingDate: format(new Date(), 'yyyy-MM-dd'),
       breedingType: 'AI',
       serviceBullId: '',
+      naturalServiceBullName: '',
       serviceEmbryoId: '',
       expectedCalvingDate: '',
     },
@@ -135,6 +137,7 @@ export function AnimalForm() {
             breedingDate: format(new Date(), 'yyyy-MM-dd'),
             breedingType: 'AI',
             serviceBullId: '',
+            naturalServiceBullName: '',
             serviceEmbryoId: '',
             expectedCalvingDate: '',
           });
@@ -228,7 +231,10 @@ export function AnimalForm() {
         animalId: newId,
         date: breedingDateISO,
         breedingType: values.breedingType,
-        bullId: values.breedingType !== 'Embryo' ? (values.serviceBullId || undefined) : undefined,
+        bullId: values.breedingType === 'AI' ? (values.serviceBullId || undefined) : undefined,
+        naturalServiceBullName: values.breedingType === 'NaturalService'
+          ? (values.naturalServiceBullName?.trim() || undefined)
+          : undefined,
         embryoId: values.breedingType === 'Embryo' ? (values.serviceEmbryoId || undefined) : undefined,
         pregnancyCheckScheduledDate: pregCheckDate,
         createdAt: now,
@@ -394,7 +400,7 @@ export function AnimalForm() {
                     </FormItem>
                   )} />
 
-                  {breedingType !== 'Embryo' ? (
+                  {breedingType === 'AI' && (
                     <FormField control={form.control} name="serviceBullId" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Bull</FormLabel>
@@ -411,7 +417,21 @@ export function AnimalForm() {
                         <FormMessage />
                       </FormItem>
                     )} />
-                  ) : (
+                  )}
+
+                  {breedingType === 'NaturalService' && (
+                    <FormField control={form.control} name="naturalServiceBullName" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bull Name</FormLabel>
+                        <FormControl>
+                          <Input className="h-12" placeholder="e.g. Big Red, Reg. #12345 (optional)" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
+
+                  {breedingType === 'Embryo' && (
                     <FormField control={form.control} name="serviceEmbryoId" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Embryo Lot</FormLabel>
