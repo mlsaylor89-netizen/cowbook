@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -39,7 +39,69 @@ import { CalvingForm } from '@/pages/CalvingForm';
 import { PregCheckForm } from '@/pages/PregCheckForm';
 import { ClassificationForm } from '@/pages/ClassificationForm';
 
+// Firebase auth + sync
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthPage } from '@/pages/AuthPage';
+import { FarmSetupPage } from '@/pages/FarmSetupPage';
+import { MigrationPage, migrationKey } from '@/pages/MigrationPage';
+import { db } from '@/db';
+
 const queryClient = new QueryClient();
+
+// ─── Auth guard ────────────────────────────────────────────────────────────
+
+type MigrationState = 'checking' | 'needed' | 'done';
+
+function AuthGuard({ children }: { children: ReactNode }) {
+  const { user, farmId, loading } = useAuth();
+  const [migration, setMigration] = useState<MigrationState>('checking');
+
+  useEffect(() => {
+    if (!user || !farmId) {
+      setMigration('checking');
+      return;
+    }
+
+    // Fast path: already migrated (or farm is brand new)
+    if (localStorage.getItem(migrationKey(farmId))) {
+      setMigration('done');
+      return;
+    }
+
+    // Async path: check if there is any local herd data to offer migration for
+    db.animals.count().then((n) => {
+      setMigration(n > 0 ? 'needed' : 'done');
+    });
+  }, [user, farmId]);
+
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <AuthPage />;
+  if (!farmId) return <FarmSetupPage />;
+
+  // Still checking Dexie animal count — only flashes for new logins on
+  // devices that have never completed migration
+  if (migration === 'checking') return <LoadingSpinner />;
+
+  if (migration === 'needed') {
+    return (
+      <MigrationPage
+        onComplete={() => setMigration('done')}
+      />
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function LoadingSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+    </div>
+  );
+}
+
+// ─── Router ────────────────────────────────────────────────────────────────
 
 function Router() {
   return (
@@ -94,13 +156,19 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
+// ─── App ───────────────────────────────────────────────────────────────────
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <AuthGuard>
+              <Router />
+            </AuthGuard>
+          </WouterRouter>
+        </AuthProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
