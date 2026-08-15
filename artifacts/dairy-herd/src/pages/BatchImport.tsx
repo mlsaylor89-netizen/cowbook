@@ -83,9 +83,9 @@ async function importAnimals(
     const name = r.name || r['animal name'] || '';
     const number = r.number || r['tag'] || r['ear tag'] || '';
 
-    if (!name) { results.push({ row: rowNum, status: 'error', message: 'Missing name', name: number || `Row ${rowNum}` }); continue; }
-    if (!number) { results.push({ row: rowNum, status: 'error', message: 'Missing number/tag', name }); continue; }
-    if (!r.breed) { results.push({ row: rowNum, status: 'error', message: 'Missing breed', name }); continue; }
+    if (!name) { results.push({ row: rowNum, status: 'skip', message: 'Missing name — skipped', name: number || `Row ${rowNum}` }); continue; }
+    if (!number) { results.push({ row: rowNum, status: 'skip', message: 'Missing number/tag — skipped', name }); continue; }
+    if (!r.breed) { results.push({ row: rowNum, status: 'skip', message: 'Missing breed — skipped', name }); continue; }
 
     if (existingNumbers.has(number.toLowerCase())) {
       results.push({ row: rowNum, status: 'skip', message: `Tag ${number} already exists`, name }); continue;
