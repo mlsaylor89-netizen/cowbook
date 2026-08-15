@@ -4,11 +4,11 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   arrayUnion,
   arrayRemove,
   deleteField,
   serverTimestamp,
-  writeBatch,
 } from 'firebase/firestore';
 import { firestore } from './firestore';
 
@@ -91,13 +91,15 @@ export async function createFarm(
     joinedAt: now,
   };
 
-  const batch = writeBatch(firestore);
+  // Three independent docs — no cross-dependencies so sequential writes are safe.
+  // (writeBatch + persistentMultipleTabManager triggers an internal assertion in
+  //  Firestore SDK 12.x, so we avoid batches here.)
 
   // 1. Join-code lookup doc
-  batch.set(doc(firestore, 'farmCodes', joinCode), { farmId });
+  await setDoc(doc(firestore, 'farmCodes', joinCode), { farmId });
 
-  // 2. Farm document (includes member details map — no subcollection needed)
-  batch.set(farmRef, {
+  // 2. Farm document (member details embedded — no subcollection needed)
+  await setDoc(farmRef, {
     name: farmName,
     ownerId,
     memberIds: [ownerId],
@@ -107,15 +109,13 @@ export async function createFarm(
   });
 
   // 3. User profile
-  batch.set(doc(firestore, 'users', ownerId), {
+  await setDoc(doc(firestore, 'users', ownerId), {
     farmId,
     email,
     displayName: displayName || email,
     role: 'owner' as MemberRole,
     joinedAt: serverTimestamp(),
   });
-
-  await batch.commit();
 
   return { farmId, joinCode };
 }
@@ -213,11 +213,9 @@ export async function regenerateJoinCode(
   currentCode: string,
 ): Promise<string> {
   const newCode = generateJoinCode();
-  const batch = writeBatch(firestore);
-  batch.delete(doc(firestore, 'farmCodes', currentCode));
-  batch.set(doc(firestore, 'farmCodes', newCode), { farmId });
-  batch.update(doc(firestore, 'farms', farmId), { joinCode: newCode });
-  await batch.commit();
+  await deleteDoc(doc(firestore, 'farmCodes', currentCode));
+  await setDoc(doc(firestore, 'farmCodes', newCode), { farmId });
+  await updateDoc(doc(firestore, 'farms', farmId), { joinCode: newCode });
   return newCode;
 }
 
