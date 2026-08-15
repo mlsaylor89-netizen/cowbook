@@ -257,3 +257,43 @@ export async function getFarmDoc(farmId: string): Promise<FarmDoc | null> {
   const snap = await getDoc(doc(firestore, 'farms', farmId));
   return snap.exists() ? ({ id: farmId, ...snap.data() } as FarmDoc) : null;
 }
+
+/**
+ * Repair a missing farm document.
+ * Called when the owner's users/{uid} doc has a farmId but farms/{farmId}
+ * was never written (e.g. creation timed out before the write reached Firestore).
+ * Re-creates the farm doc and its farmCodes lookup with a fresh join code.
+ */
+export async function repairFarmDoc(
+  farmId: string,
+  ownerId: string,
+  email: string,
+  displayName: string,
+  farmName: string,
+): Promise<string> {
+  const joinCode = generateJoinCode();
+  const now = new Date().toISOString();
+
+  const ownerDetail: MemberDetail = {
+    uid: ownerId,
+    email,
+    displayName: displayName || email,
+    role: 'owner',
+    joinedAt: now,
+  };
+
+  // Write farmCodes lookup
+  await setDoc(doc(firestore, 'farmCodes', joinCode), { farmId });
+
+  // Re-create farm document with the existing farmId
+  await setDoc(doc(firestore, 'farms', farmId), {
+    name: farmName,
+    ownerId,
+    memberIds: [ownerId],
+    joinCode,
+    memberDetails: { [ownerId]: ownerDetail },
+    createdAt: serverTimestamp(),
+  });
+
+  return joinCode;
+}

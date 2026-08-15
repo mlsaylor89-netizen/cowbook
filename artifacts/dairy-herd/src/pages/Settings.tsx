@@ -17,6 +17,7 @@ import {
   removeFarmMember,
   updateMemberRole,
   regenerateJoinCode,
+  repairFarmDoc,
   normaliseRole,
   roleLabel,
   type FarmDoc,
@@ -277,7 +278,60 @@ function FarmUsersSection() {
     );
   }
 
-  if (!farm) return null;
+  const [repairing, setRepairing] = useState(false);
+  const [repairName, setRepairName] = useState('');
+  const [repairError, setRepairError] = useState('');
+
+  async function handleRepair(e: React.FormEvent) {
+    e.preventDefault();
+    if (!farmId || !user) return;
+    setRepairing(true);
+    setRepairError('');
+    try {
+      const newCode = await repairFarmDoc(
+        farmId,
+        user.uid,
+        user.email!,
+        userDoc?.displayName || user.email!,
+        repairName.trim() || 'My Farm',
+      );
+      await load();
+      toast({ title: 'Farm data repaired', description: `Your join code is ${newCode}` });
+    } catch (err: unknown) {
+      setRepairError(err instanceof Error ? err.message : 'Repair failed');
+    } finally {
+      setRepairing(false);
+    }
+  }
+
+  if (!farm) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider px-1">Farm / Users</h3>
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="p-4 space-y-3">
+            <p className="font-bold text-destructive">Farm data missing</p>
+            <p className="text-sm text-muted-foreground">
+              Your account is linked to a farm but the farm record wasn't saved to the server.
+              Enter your farm name to repair it — this will generate a new join code your family members can use.
+            </p>
+            <form onSubmit={handleRepair} className="space-y-2">
+              <Input
+                placeholder="Farm name (e.g. Sunny Pastures)"
+                value={repairName}
+                onChange={e => setRepairName(e.target.value)}
+                required
+              />
+              {repairError && <p className="text-sm text-destructive">{repairError}</p>}
+              <Button type="submit" className="w-full" disabled={repairing}>
+                {repairing ? 'Repairing…' : 'Repair farm data'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
