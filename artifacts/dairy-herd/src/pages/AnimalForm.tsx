@@ -27,7 +27,8 @@ import {
 
 const formSchema = z.object({
   number: z.string().min(1, 'Number is required'),
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, 'Reg. name is required'),
+  barnName: z.string().optional(),
   breed: z.string().min(1, 'Breed is required'),
   lactationStatus: z.enum(['Milking', 'Dry', 'Heifer']),
   reproStatus: z.enum(['Open', 'Bred', 'Pregnant', 'Fresh']),
@@ -82,6 +83,7 @@ export function AnimalForm() {
     defaultValues: {
       number: '',
       name: '',
+      barnName: '',
       breed: 'Holstein',
       lactationStatus: 'Milking',
       reproStatus: 'Open',
@@ -124,6 +126,7 @@ export function AnimalForm() {
           form.reset({
             number: animal.number,
             name: animal.name,
+            barnName: animal.barnName || '',
             breed: animal.breed,
             lactationStatus: animal.lactationStatus ?? inferLactation(animal.status),
             reproStatus: animal.reproStatus ?? inferRepro(animal.status),
@@ -167,6 +170,7 @@ export function AnimalForm() {
       await db.animals.update(id, {
         number: values.number,
         name: values.name,
+        barnName: values.barnName?.trim() || undefined,
         breed: values.breed,
         lactationStatus: values.lactationStatus,
         reproStatus: values.reproStatus,
@@ -202,6 +206,7 @@ export function AnimalForm() {
       farmId: 'demo-farm',
       number: values.number,
       name: values.name,
+      barnName: values.barnName?.trim() || undefined,
       breed: values.breed,
       lactationStatus: values.lactationStatus,
       reproStatus: values.reproStatus,
@@ -261,23 +266,32 @@ export function AnimalForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-              {/* Number + Name */}
+              {/* Number + Barn Name */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="number" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Number</FormLabel>
+                    <FormLabel>Number / Tag</FormLabel>
                     <FormControl><Input className="h-12" placeholder="e.g. 101" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="name" render={({ field }) => (
+                <FormField control={form.control} name="barnName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Barn Name</FormLabel>
                     <FormControl><Input className="h-12" placeholder="e.g. Daisy" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
               </div>
+
+              {/* Reg. Name (full width, less prominent) */}
+              <FormField control={form.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reg. Name <span className="text-muted-foreground font-normal">(official / registration name)</span></FormLabel>
+                  <FormControl><Input className="h-12" placeholder="e.g. Meadowburne Daisy 4892-ET" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
 
               {/* ── Status ── */}
               <div className="border rounded-xl p-4 space-y-3 bg-muted/20">

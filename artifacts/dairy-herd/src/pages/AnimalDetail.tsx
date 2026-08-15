@@ -47,7 +47,10 @@ export function AnimalDetail() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h2 className="text-2xl font-bold">{animal.number} {animal.name}</h2>
+          <div>
+            <h2 className="text-2xl font-bold">{animal.number} {animal.barnName || animal.name}</h2>
+            {animal.barnName && <p className="text-sm text-muted-foreground leading-tight">{animal.name}</p>}
+          </div>
         </div>
         <Link href={`/herd/${animal.id}/edit`}>
           <Button variant="outline" size="sm">

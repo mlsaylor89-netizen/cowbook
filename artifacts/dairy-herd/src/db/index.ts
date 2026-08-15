@@ -3,7 +3,8 @@ import Dexie, { type Table } from 'dexie';
 export interface Animal {
   id: string;
   farmId: string;
-  name: string;
+  name: string;           // registration / official name
+  barnName?: string;      // day-to-day name used in the barn
   number: string;
   registrationNumber?: string;
   rfidTag?: string;

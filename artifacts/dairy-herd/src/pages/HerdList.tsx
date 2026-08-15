@@ -18,9 +18,10 @@ export function HerdList() {
     
     if (search.trim()) {
       const s = search.toLowerCase();
-      all = all.filter(a => 
-        a.number.toLowerCase().includes(s) || 
-        a.name.toLowerCase().includes(s) || 
+      all = all.filter(a =>
+        a.number.toLowerCase().includes(s) ||
+        a.name.toLowerCase().includes(s) ||
+        (a.barnName && a.barnName.toLowerCase().includes(s)) ||
         (a.rfidTag && a.rfidTag.toLowerCase().includes(s))
       );
     }
@@ -65,7 +66,12 @@ export function HerdList() {
                       {animal.number}
                     </div>
                     <div>
-                      <p className="font-bold text-base leading-tight">{animal.name}</p>
+                      <p className="font-bold text-base leading-tight">
+                        {animal.barnName || animal.name}
+                      </p>
+                      {animal.barnName && animal.barnName !== animal.name && (
+                        <p className="text-xs text-muted-foreground leading-tight">{animal.name}</p>
+                      )}
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <LactationBadge status={lactStat(animal)} />
                         <ReproBadge status={reproStat(animal)} />

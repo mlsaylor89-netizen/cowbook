@@ -45,9 +45,9 @@ function now() { return new Date().toISOString(); }
 
 // ─── Templates ─────────────────────────────────────────────────────────────
 
-const ANIMAL_TEMPLATE = `name,number,breed,status,lactationNumber,birthDate,sire,dam,registrationNumber,rfidTag,notes
-Bessie,1001,Holstein,Lactating,3,2021-03-15,Star Bravo,Lady Blue,US123456,,Good producer
-Rosie,1002,Jersey,Heifer,0,2023-06-01,,,,ABC987,
+const ANIMAL_TEMPLATE = `name,barnName,number,breed,status,lactationNumber,birthDate,sire,dam,registrationNumber,rfidTag,notes
+Meadowburne Daisy 4892-ET,Daisy,1001,Holstein,Lactating,3,2021-03-15,Star Bravo,Lady Blue,US123456,,Good producer
+Sunny Hill Rosie 0042,Rosie,1002,Jersey,Heifer,0,2023-06-01,,,,ABC987,
 `;
 
 const SEMEN_TEMPLATE = `bullName,naabCode,breed,studCompany,units,purchaseDate,pricePerUnit,registrationNumber,notes
@@ -94,10 +94,13 @@ async function importAnimals(
     const status = VALID_STATUSES.find(s => s.toLowerCase() === statusRaw.toLowerCase()) ?? 'Open';
     const lactNum = parseInt(r.lactationnumber || r['lactation number'] || r.lactation || '0', 10);
 
+    const barnName = r.barnname || r['barn name'] || r['barn'] || undefined;
+
     const animal: Animal = {
       id: uid(),
       farmId,
       name,
+      barnName: barnName || undefined,
       number,
       breed: r.breed,
       status: status as Animal['status'],
