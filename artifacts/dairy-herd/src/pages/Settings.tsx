@@ -176,6 +176,9 @@ function FarmUsersSection() {
   const [regenerating, setRegenerating] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairName, setRepairName] = useState('');
+  const [repairError, setRepairError] = useState('');
 
   const isOwner = userDoc?.role === 'owner';
 
@@ -277,10 +280,6 @@ function FarmUsersSection() {
       </div>
     );
   }
-
-  const [repairing, setRepairing] = useState(false);
-  const [repairName, setRepairName] = useState('');
-  const [repairError, setRepairError] = useState('');
 
   async function handleRepair(e: React.FormEvent) {
     e.preventDefault();
