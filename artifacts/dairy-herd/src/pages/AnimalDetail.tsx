@@ -7,7 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
+
+/** Safely format an ISO date string — returns fallback if missing or invalid. */
+function fmt(dateStr: string | undefined | null, pattern: string, fallback = '—') {
+  if (!dateStr) return fallback;
+  try {
+    const d = parseISO(dateStr);
+    return isValid(d) ? format(d, pattern) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 import { LactationBadge, ReproBadge } from './HerdList';
 import { lactStat, reproStat } from '@/db/computed';
 import type { ClassificationScore, Treatment } from '@/db';
@@ -164,11 +175,15 @@ export function AnimalDetail() {
         <div className="space-y-3">
           {/* Unified chronological timeline */}
           {[
-            ...breedings.map(b => ({ type: 'breeding' as const, date: b.date, item: b })),
-            ...calvings.map(c => ({ type: 'calving'  as const, date: c.calvingDate, item: c })),
-            ...heats.map(h =>    ({ type: 'heat'     as const, date: h.observedAt,  item: h })),
+            ...breedings.map(b => ({ type: 'breeding' as const, date: b.date ?? '', item: b })),
+            ...calvings.map(c => ({ type: 'calving'  as const, date: c.calvingDate ?? '', item: c })),
+            ...heats.map(h =>    ({ type: 'heat'     as const, date: h.observedAt ?? '',  item: h })),
           ]
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .sort((a, b) => {
+              const ta = a.date ? new Date(a.date).getTime() : 0;
+              const tb = b.date ? new Date(b.date).getTime() : 0;
+              return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta);
+            })
             .map(entry => {
               if (entry.type === 'breeding') {
                 const b = entry.item as (typeof breedings)[0];
@@ -178,7 +193,7 @@ export function AnimalDetail() {
                       <Heart className="h-5 w-5 mt-0.5 text-destructive shrink-0" />
                       <div>
                         <p className="font-bold">{b.breedingType} Breeding</p>
-                        <p className="text-sm text-muted-foreground">{format(parseISO(b.date), 'MMM d, yyyy')} · Bull: {b.bullId || 'Unknown'}</p>
+                        <p className="text-sm text-muted-foreground">{fmt(b.date, 'MMM d, yyyy')} · Bull: {b.bullId || 'Unknown'}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -192,7 +207,7 @@ export function AnimalDetail() {
                       <Baby className="h-5 w-5 mt-0.5 text-primary shrink-0" />
                       <div>
                         <p className="font-bold">Calved ({c.calfSex})</p>
-                        <p className="text-sm text-muted-foreground">{format(parseISO(c.calvingDate), 'MMM d, yyyy')}</p>
+                        <p className="text-sm text-muted-foreground">{fmt(c.calvingDate, 'MMM d, yyyy')}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -209,8 +224,8 @@ export function AnimalDetail() {
                     <div>
                       <p className="font-bold">Heat Observed — {h.breedingType === 'sexed' ? 'Sexed' : 'Conventional'}</p>
                       <p className="text-sm text-muted-foreground">
-                        {format(parseISO(h.observedAt), 'MMM d, yyyy h:mm a')}
-                        {' · '}Breed by {format(parseISO(h.scheduledBreedAt), 'h:mm a')}
+                        {fmt(h.observedAt, 'MMM d, yyyy h:mm a')}
+                        {h.scheduledBreedAt ? <>{' · '}Breed by {fmt(h.scheduledBreedAt, 'h:mm a')}</> : null}
                       </p>
                       <span className={`text-xs font-semibold ${statusColor}`}>{statusLabel}</span>
                     </div>
