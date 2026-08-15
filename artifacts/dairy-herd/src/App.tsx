@@ -43,7 +43,7 @@ import { ClassificationForm } from '@/pages/ClassificationForm';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { AuthPage } from '@/pages/AuthPage';
 import { FarmSetupPage } from '@/pages/FarmSetupPage';
-import { MigrationPage, migrationKey } from '@/pages/MigrationPage';
+import { MigrationPage, MIGRATION_KEY_PREFIX } from '@/pages/MigrationPage';
 import { db } from '@/db';
 
 const queryClient = new QueryClient();
@@ -63,7 +63,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
     }
 
     // Fast path: already migrated (or farm is brand new)
-    if (localStorage.getItem(migrationKey(farmId))) {
+    if (localStorage.getItem(`${MIGRATION_KEY_PREFIX}${farmId}`)) {
       setMigration('done');
       return;
     }

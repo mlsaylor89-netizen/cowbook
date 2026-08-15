@@ -6,11 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CloudUpload, CheckCircle2, SkipForward } from 'lucide-react';
 
-const MIGRATION_KEY_PREFIX = 'dairyHerdMigrated_';
-
-export function migrationKey(farmId: string) {
-  return `${MIGRATION_KEY_PREFIX}${farmId}`;
-}
+export const MIGRATION_KEY_PREFIX = 'dairyHerdMigrated_';
 
 interface Props {
   onComplete: () => void;
@@ -45,7 +41,7 @@ export function MigrationPage({ onComplete }: Props) {
         setProgressPct(Math.round((done / nonEmptyCols) * 100));
       });
       setStatus('done');
-      localStorage.setItem(migrationKey(farmId), '1');
+      localStorage.setItem(`${MIGRATION_KEY_PREFIX}${farmId}`, '1');
       setTimeout(onComplete, 1200);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Migration failed');
@@ -55,7 +51,7 @@ export function MigrationPage({ onComplete }: Props) {
 
   function handleSkip() {
     if (!farmId) return;
-    localStorage.setItem(migrationKey(farmId), '1');
+    localStorage.setItem(`${MIGRATION_KEY_PREFIX}${farmId}`, '1');
     onComplete();
   }
 
