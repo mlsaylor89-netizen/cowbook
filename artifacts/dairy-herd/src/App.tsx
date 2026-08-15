@@ -40,7 +40,8 @@ import { PregCheckForm } from '@/pages/PregCheckForm';
 import { ClassificationForm } from '@/pages/ClassificationForm';
 
 // Firebase auth + sync
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { AuthPage } from '@/pages/AuthPage';
 import { FarmSetupPage } from '@/pages/FarmSetupPage';
 import { MigrationPage, MIGRATION_KEY_PREFIX } from '@/pages/MigrationPage';

@@ -2,13 +2,13 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   setDoc,
   updateDoc,
-  deleteDoc,
   arrayUnion,
   arrayRemove,
+  deleteField,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { firestore } from './firestore';
 
@@ -16,12 +16,21 @@ import { firestore } from './firestore';
 
 export type MemberRole = 'owner' | 'full_access' | 'viewer';
 
+export interface MemberDetail {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: MemberRole;
+  joinedAt: string; // ISO string – serverTimestamp not storable in a map value, so we use Date.now()
+}
+
 export interface FarmDoc {
   id: string;
   name: string;
   ownerId: string;
   memberIds: string[];
   joinCode: string;
+  memberDetails: Record<string, MemberDetail>; // keyed by uid
   createdAt: unknown;
 }
 
@@ -30,14 +39,6 @@ export interface UserDoc {
   email: string;
   displayName: string;
   role: MemberRole | 'member'; // 'member' kept for backward-compat
-  joinedAt: unknown;
-}
-
-export interface MemberDoc {
-  uid: string;
-  email: string;
-  displayName: string;
-  role: MemberRole;
   joinedAt: unknown;
 }
 
@@ -51,17 +52,26 @@ function generateJoinCode(): string {
   ).join('');
 }
 
-/** Normalise legacy 'member' role to 'full_access'. */
 export function normaliseRole(role: string): MemberRole {
-  return role === 'owner' ? 'owner' : 'full_access';
+  if (role === 'owner') return 'owner';
+  if (role === 'viewer') return 'viewer';
+  return 'full_access'; // 'member' + anything else → full_access
 }
 
 export function roleLabel(role: string): string {
-  return role === 'owner' ? 'Owner' : 'Full Access';
+  if (role === 'owner') return 'Owner';
+  if (role === 'viewer') return 'Viewer';
+  return 'Full Access';
 }
 
-// ─── Farm creation / joining ───────────────────────────────────────────────
+// ─── Farm creation ─────────────────────────────────────────────────────────
 
+/**
+ * Create a new farm.
+ * Uses a batch write so all three documents (farmCode, farm, user profile)
+ * land atomically in one server round-trip. No subcollection is written,
+ * so there are no security-rule timing issues.
+ */
 export async function createFarm(
   ownerId: string,
   email: string,
@@ -71,41 +81,46 @@ export async function createFarm(
   const farmRef = doc(collection(firestore, 'farms'));
   const farmId = farmRef.id;
   const joinCode = generateJoinCode();
+  const now = new Date().toISOString();
 
-  // 1. Join-code lookup document
-  await setDoc(doc(firestore, 'farmCodes', joinCode), { farmId });
+  const ownerDetail: MemberDetail = {
+    uid: ownerId,
+    email,
+    displayName: displayName || email,
+    role: 'owner',
+    joinedAt: now,
+  };
 
-  // 2. Farm document
-  await setDoc(farmRef, {
+  const batch = writeBatch(firestore);
+
+  // 1. Join-code lookup doc
+  batch.set(doc(firestore, 'farmCodes', joinCode), { farmId });
+
+  // 2. Farm document (includes member details map — no subcollection needed)
+  batch.set(farmRef, {
     name: farmName,
     ownerId,
     memberIds: [ownerId],
     joinCode,
+    memberDetails: { [ownerId]: ownerDetail },
     createdAt: serverTimestamp(),
   });
 
-  const now = serverTimestamp();
-
-  // 3. Owner's user profile
-  await setDoc(doc(firestore, 'users', ownerId), {
+  // 3. User profile
+  batch.set(doc(firestore, 'users', ownerId), {
     farmId,
     email,
-    displayName,
+    displayName: displayName || email,
     role: 'owner' as MemberRole,
-    joinedAt: now,
+    joinedAt: serverTimestamp(),
   });
 
-  // 4. Farm members subcollection (enables owner to list/manage members)
-  await setDoc(doc(firestore, 'farms', farmId, 'members', ownerId), {
-    uid: ownerId,
-    email,
-    displayName,
-    role: 'owner' as MemberRole,
-    joinedAt: now,
-  });
+  await batch.commit();
 
   return { farmId, joinCode };
 }
+
+// ─── Joining ───────────────────────────────────────────────────────────────
 
 export async function joinFarmByCode(
   uid: string,
@@ -119,33 +134,31 @@ export async function joinFarmByCode(
 
   const { farmId } = codeSnap.data() as { farmId: string };
 
-  // Verify the farm still exists
   const farmSnap = await getDoc(doc(firestore, 'farms', farmId));
   if (!farmSnap.exists()) throw new Error('Farm not found – the join code may be outdated.');
 
-  const now = serverTimestamp();
+  const now = new Date().toISOString();
+  const memberDetail: MemberDetail = {
+    uid,
+    email,
+    displayName: displayName || email,
+    role: 'full_access',
+    joinedAt: now,
+  };
 
-  // Add uid to farm's memberIds array
+  // Add uid to memberIds array and write detail into the memberDetails map
   await updateDoc(doc(firestore, 'farms', farmId), {
     memberIds: arrayUnion(uid),
+    [`memberDetails.${uid}`]: memberDetail,
   });
 
   // Write user profile
   await setDoc(doc(firestore, 'users', uid), {
     farmId,
     email,
-    displayName,
+    displayName: displayName || email,
     role: 'full_access' as MemberRole,
-    joinedAt: now,
-  });
-
-  // Write to farm members subcollection
-  await setDoc(doc(firestore, 'farms', farmId, 'members', uid), {
-    uid,
-    email,
-    displayName,
-    role: 'full_access' as MemberRole,
-    joinedAt: now,
+    joinedAt: serverTimestamp(),
   });
 
   return farmId;
@@ -153,55 +166,58 @@ export async function joinFarmByCode(
 
 // ─── Member management (owner only) ───────────────────────────────────────
 
-/** List all members of a farm from the members subcollection. */
-export async function listFarmMembers(farmId: string): Promise<MemberDoc[]> {
-  const snap = await getDocs(collection(firestore, 'farms', farmId, 'members'));
-  return snap.docs.map(d => d.data() as MemberDoc);
+/** Read member list from the farm's memberDetails map. */
+export async function listFarmMembers(farmId: string): Promise<MemberDetail[]> {
+  const snap = await getDoc(doc(firestore, 'farms', farmId));
+  if (!snap.exists()) return [];
+  const data = snap.data() as FarmDoc;
+  const details = data.memberDetails ?? {};
+  return Object.values(details).sort((a, b) => {
+    if (a.role === 'owner') return -1;
+    if (b.role === 'owner') return 1;
+    return (a.displayName || a.email).localeCompare(b.displayName || b.email);
+  });
 }
 
-/** Remove a member from the farm. Only the farm owner should call this. */
+/** Remove a member. Owner-only. */
 export async function removeFarmMember(farmId: string, uid: string): Promise<void> {
-  // Remove from farm's memberIds array
   await updateDoc(doc(firestore, 'farms', farmId), {
     memberIds: arrayRemove(uid),
+    [`memberDetails.${uid}`]: deleteField(),
   });
-  // Delete from members subcollection
-  await deleteDoc(doc(firestore, 'farms', farmId, 'members', uid));
 }
 
-/** Change a member's role. Only the farm owner should call this. */
+/** Change a member's role. Owner-only. */
 export async function updateMemberRole(
   farmId: string,
   uid: string,
   role: MemberRole,
 ): Promise<void> {
-  // Update in members subcollection
-  await updateDoc(doc(firestore, 'farms', farmId, 'members', uid), { role });
-  // Best-effort update on the user's own profile (may fail if rules tighten later)
+  await updateDoc(doc(firestore, 'farms', farmId), {
+    [`memberDetails.${uid}.role`]: role,
+  });
+  // Best-effort update on user's own profile
   try {
     await updateDoc(doc(firestore, 'users', uid), { role });
   } catch {
-    // Non-fatal: member subcollection is the source of truth for display
+    // Non-fatal
   }
 }
 
 /**
  * Regenerate the farm's join code.
- * Deletes the old farmCodes lookup doc, creates a new one, updates the farm.
+ * Deletes the old farmCodes lookup, creates a new one, updates the farm.
  */
 export async function regenerateJoinCode(
   farmId: string,
   currentCode: string,
 ): Promise<string> {
   const newCode = generateJoinCode();
-
-  // Remove old lookup
-  await deleteDoc(doc(firestore, 'farmCodes', currentCode));
-  // Create new lookup
-  await setDoc(doc(firestore, 'farmCodes', newCode), { farmId });
-  // Update farm document
-  await updateDoc(doc(firestore, 'farms', farmId), { joinCode: newCode });
-
+  const batch = writeBatch(firestore);
+  batch.delete(doc(firestore, 'farmCodes', currentCode));
+  batch.set(doc(firestore, 'farmCodes', newCode), { farmId });
+  batch.update(doc(firestore, 'farms', farmId), { joinCode: newCode });
+  await batch.commit();
   return newCode;
 }
 

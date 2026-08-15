@@ -1,7 +1,5 @@
 import React, {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useState,
 } from 'react';
@@ -13,31 +11,13 @@ import {
   signOut,
   sendPasswordResetEmail,
   updateProfile,
-  type User,
 } from 'firebase/auth';
 import { firebaseApp } from '@/lib/firebase';
-import { type UserDoc, getUserDoc } from '@/lib/farmService';
+import { getUserDoc } from '@/lib/farmService';
 import { startSync, stopSync } from '@/lib/syncService';
+import { AuthContext } from '@/contexts/authContextInstance';
 
 const auth = getAuth(firebaseApp);
-
-// ─── Context type ─────────────────────────────────────────────────────────
-
-interface AuthContextValue {
-  user: User | null;
-  userDoc: UserDoc | null;
-  farmId: string | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  /** Creates the Firebase Auth account only – farm setup follows separately. */
-  signup: (email: string, password: string, displayName: string) => Promise<void>;
-  logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  /** Call after creating / joining a farm to refresh userData. */
-  refreshUserDoc: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────
 
@@ -111,10 +91,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
-}

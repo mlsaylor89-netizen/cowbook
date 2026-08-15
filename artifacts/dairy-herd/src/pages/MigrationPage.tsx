@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import { migrateToFirestore, countLocalRecords } from '@/lib/syncService';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

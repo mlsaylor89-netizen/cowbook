@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Save, Copy, CheckCheck, RefreshCw, UserMinus, Shield, Crown } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/useAuth';
 import {
   getFarmDoc,
   listFarmMembers,
@@ -20,7 +20,7 @@ import {
   normaliseRole,
   roleLabel,
   type FarmDoc,
-  type MemberDoc,
+  type MemberDetail,
   type MemberRole,
 } from '@/lib/farmService';
 
@@ -169,7 +169,7 @@ function FarmUsersSection() {
   const { toast } = useToast();
 
   const [farm, setFarm] = useState<FarmDoc | null>(null);
-  const [members, setMembers] = useState<MemberDoc[]>([]);
+  const [members, setMembers] = useState<MemberDetail[]>([]);
   const [loadingFarm, setLoadingFarm] = useState(true);
   const [copied, setCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
