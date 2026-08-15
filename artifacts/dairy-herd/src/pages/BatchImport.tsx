@@ -75,6 +75,7 @@ async function importAnimals(
   const existing = await db.animals.where('farmId').equals(farmId).toArray();
   const existingNumbers = new Set(existing.map(a => a.number?.toLowerCase()));
   const results: RowResult[] = [];
+  const toInsert: Animal[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -93,10 +94,9 @@ async function importAnimals(
     const statusRaw = r.status || 'Open';
     const status = VALID_STATUSES.find(s => s.toLowerCase() === statusRaw.toLowerCase()) ?? 'Open';
     const lactNum = parseInt(r.lactationnumber || r['lactation number'] || r.lactation || '0', 10);
-
     const barnName = r.barnname || r['barn name'] || r['barn'] || undefined;
 
-    const animal: Animal = {
+    toInsert.push({
       id: uid(),
       farmId,
       name,
@@ -113,11 +113,12 @@ async function importAnimals(
       notes: r.notes || undefined,
       createdAt: now(),
       updatedAt: now(),
-    };
-
-    await db.animals.put(animal);
+    });
     results.push({ row: rowNum, status: 'ok', message: 'Imported', name });
   }
+
+  // Single transaction for the entire batch — dramatically faster than one put() per row
+  if (toInsert.length > 0) await db.animals.bulkPut(toInsert);
 
   return results;
 }
@@ -128,6 +129,9 @@ async function importSemen(rows: Record<string, string>[]): Promise<RowResult[]>
   const results: RowResult[] = [];
   const existing = await db.semenBulls.toArray();
   const existingBulls = new Map(existing.map(b => [b.naabCode?.toLowerCase() ?? '', b.id]));
+
+  const newBulls: SemenBull[] = [];
+  const newPurchases: SemenPurchase[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -157,13 +161,13 @@ async function importSemen(rows: Record<string, string>[]): Promise<RowResult[]>
         createdAt: now(),
         updatedAt: now(),
       };
-      await db.semenBulls.put(bull);
+      newBulls.push(bull);
       if (naabCode) existingBulls.set(naabCode.toLowerCase(), bull.id);
       bullId = bull.id;
     }
 
     const priceRaw = parseFloat(r.priceperunit || r['price per unit'] || r.price || '0');
-    const purchase: SemenPurchase = {
+    newPurchases.push({
       id: uid(),
       bullId,
       purchaseDate,
@@ -173,10 +177,13 @@ async function importSemen(rows: Record<string, string>[]): Promise<RowResult[]>
       notes: r.notes || undefined,
       createdAt: now(),
       updatedAt: now(),
-    };
-    await db.semenPurchases.put(purchase);
+    });
     results.push({ row: rowNum, status: 'ok', message: `${unitsRaw} units added`, name: bullName });
   }
+
+  // Bulls first (purchases reference their IDs), then purchases — two transactions instead of N×2
+  if (newBulls.length > 0) await db.semenBulls.bulkPut(newBulls);
+  if (newPurchases.length > 0) await db.semenPurchases.bulkPut(newPurchases);
 
   return results;
 }
@@ -185,6 +192,8 @@ async function importSemen(rows: Record<string, string>[]): Promise<RowResult[]>
 
 async function importEmbryos(rows: Record<string, string>[]): Promise<RowResult[]> {
   const results: RowResult[] = [];
+  const newEmbryos: Embryo[] = [];
+  const newPurchases: EmbryoPurchase[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -210,10 +219,10 @@ async function importEmbryos(rows: Record<string, string>[]): Promise<RowResult[
       createdAt: now(),
       updatedAt: now(),
     };
-    await db.embryos.put(embryo);
+    newEmbryos.push(embryo);
 
     const priceRaw = parseFloat(r.priceperunit || r['price per unit'] || r.price || '0');
-    const purchase: EmbryoPurchase = {
+    newPurchases.push({
       id: uid(),
       embryoId: embryo.id,
       purchaseDate,
@@ -223,10 +232,13 @@ async function importEmbryos(rows: Record<string, string>[]): Promise<RowResult[
       notes: r.notes || undefined,
       createdAt: now(),
       updatedAt: now(),
-    };
-    await db.embryoPurchases.put(purchase);
+    });
     results.push({ row: rowNum, status: 'ok', message: `${unitsRaw} embryos added`, name: donorName });
   }
+
+  // Two transactions instead of N×2
+  if (newEmbryos.length > 0) await db.embryos.bulkPut(newEmbryos);
+  if (newPurchases.length > 0) await db.embryoPurchases.bulkPut(newPurchases);
 
   return results;
 }
