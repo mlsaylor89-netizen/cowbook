@@ -33,6 +33,10 @@ const effectiveBasePath = basePath ?? '/';
 
 export default defineConfig({
   base: effectiveBasePath,
+  define: {
+    // Injected at build time so the UI can show which code version is running.
+    __BUILD_TS__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     tailwindcss(),

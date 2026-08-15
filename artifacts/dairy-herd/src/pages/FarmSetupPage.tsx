@@ -87,6 +87,10 @@ export function FarmSetupPage() {
         <div className="text-center space-y-1">
           <h1 className="text-3xl font-black tracking-tight">🐄 HerdTrack</h1>
           <p className="text-sm text-muted-foreground">Signed in as {user?.email}</p>
+          <p className="text-xs text-muted-foreground/50 font-mono">
+            {/* Build timestamp — tells us if you have the latest code */}
+            v{new Date(__BUILD_TS__).toISOString().slice(0,16).replace('T',' ')}
+          </p>
         </div>
 
         {step === 'choose' && (

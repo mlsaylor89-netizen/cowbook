@@ -11,9 +11,15 @@ import './index.css';
 // config — they hold a lock that makes every write hang indefinitely.
 clearStaleFirestoreCache('herdsman-95bca');
 
-// Register service worker for PWA
+// Register service worker. When a new version is detected, reload immediately
+// so the browser always runs the latest code instead of stale cached JS.
 if ('serviceWorker' in navigator) {
-  registerSW({ immediate: true });
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      window.location.reload();
+    },
+  });
 }
 
 createRoot(document.getElementById('root')!, {
