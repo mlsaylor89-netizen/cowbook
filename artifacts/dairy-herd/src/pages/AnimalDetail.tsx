@@ -6,11 +6,11 @@ import { Link, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award } from 'lucide-react';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { LactationBadge, ReproBadge } from './HerdList';
 import { lactStat, reproStat } from '@/db/computed';
-import type { ClassificationScore } from '@/db';
+import type { ClassificationScore, Treatment } from '@/db';
 
 export function AnimalDetail() {
   const [match, params] = useRoute('/herd/:id');
@@ -181,11 +181,101 @@ export function AnimalDetail() {
         </div>
       </div>
 
+      {/* Treatments */}
+      <TreatmentsSection animalId={animal.id} treatments={treatments} />
+
       {/* Classifications */}
       <ClassificationsSection animalId={animal.id} classifications={classifications} />
 
       {/* Notes */}
       <NotesSection animalId={animal.id} notes={notes} />
+    </div>
+  );
+}
+
+function TreatmentsSection({ animalId, treatments }: { animalId: string; treatments: Treatment[] }) {
+  const now = new Date();
+  const active = treatments.filter(t => !t.resolved);
+  const resolved = treatments.filter(t => t.resolved);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Pill className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-bold">Treatments</h3>
+        </div>
+        <Link href={`/treatment?animalId=${animalId}`}>
+          <Button size="sm" variant="outline">+ Add</Button>
+        </Link>
+      </div>
+
+      {treatments.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-2">No treatment records yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {[...active, ...resolved].map(t => {
+            const milkExpiry = t.milkWithholdUntil ? new Date(t.milkWithholdUntil) : null;
+            const meatExpiry = t.meatWithholdUntil ? new Date(t.meatWithholdUntil) : null;
+            const milkActive = milkExpiry && milkExpiry > now;
+            const meatActive = meatExpiry && meatExpiry > now;
+            const milkDaysLeft = milkExpiry ? Math.ceil((milkExpiry.getTime() - now.getTime()) / 86400000) : 0;
+            const meatDaysLeft = meatExpiry ? Math.ceil((meatExpiry.getTime() - now.getTime()) / 86400000) : 0;
+
+            return (
+              <Card key={t.id} className={!t.resolved && (milkActive || meatActive) ? 'border-destructive/50' : ''}>
+                <CardContent className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <Pill className="h-4 w-4 mt-0.5 text-purple-600 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold">{t.condition}</p>
+                          {t.resolved ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                              <CheckCircle2 className="h-3 w-3" /> Resolved
+                            </span>
+                          ) : (milkActive || meatActive) ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-destructive bg-destructive/10 border border-destructive/30 px-2 py-0.5 rounded-full">
+                              <AlertTriangle className="h-3 w-3" /> Withholding
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {format(parseISO(t.date), 'MMM d, yyyy')} · {t.product}
+                          {t.dose ? ` · ${t.dose}` : ''}
+                          {t.route ? ` · ${t.route}` : ''}
+                        </p>
+                        {(milkActive || meatActive) && (
+                          <div className="mt-1.5 flex flex-wrap gap-2">
+                            {milkActive && (
+                              <span className="text-xs font-semibold text-destructive">
+                                🥛 Milk withhold: {milkDaysLeft}d left ({format(milkExpiry!, 'MMM d')})
+                              </span>
+                            )}
+                            {meatActive && (
+                              <span className="text-xs font-semibold text-orange-700">
+                                🥩 Meat withhold: {meatDaysLeft}d left ({format(meatExpiry!, 'MMM d')})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {t.notes && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">{t.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
