@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromCache,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -222,7 +223,18 @@ export async function regenerateJoinCode(
 // ─── Read helpers ──────────────────────────────────────────────────────────
 
 export async function getUserDoc(uid: string): Promise<UserDoc | null> {
-  const snap = await getDoc(doc(firestore, 'users', uid));
+  const ref = doc(firestore, 'users', uid);
+
+  // Try the local IndexedDB cache first — instant, no network required.
+  // This is the common case for returning users on a device with persistence.
+  try {
+    const cached = await getDocFromCache(ref);
+    if (cached.exists()) return cached.data() as UserDoc;
+  } catch {
+    // Cache miss — fall through to a network fetch.
+  }
+
+  const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() as UserDoc) : null;
 }
 

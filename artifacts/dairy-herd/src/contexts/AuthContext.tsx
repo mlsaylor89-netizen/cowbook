@@ -39,11 +39,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       if (u) {
         try {
-          await loadUserDoc(u);
+          // Race against a hard timeout so a hanging Firestore call (slow network,
+          // permission error waiting on server, etc.) never freezes the spinner.
+          await Promise.race([
+            loadUserDoc(u),
+            new Promise<void>((_, reject) =>
+              setTimeout(
+                () => reject(new Error('[auth] loadUserDoc timed out')),
+                8000,
+              ),
+            ),
+          ]);
         } catch (err) {
-          // Firestore may be unavailable (permission denied, network error,
-          // IndexedDB conflict, etc.). Log it but always clear the spinner so
-          // the user isn't stuck on a white loading screen.
           console.error('[auth] Failed to load user doc:', err);
         }
       } else {
