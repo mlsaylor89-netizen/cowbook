@@ -83,11 +83,12 @@ async function importAnimals(
     const name = r.name || r['animal name'] || '';
     const number = r.number || r['tag'] || r['ear tag'] || '';
 
-    if (!name) { results.push({ row: rowNum, status: 'skip', message: 'Missing name — skipped', name: number || `Row ${rowNum}` }); continue; }
-    if (!number) { results.push({ row: rowNum, status: 'skip', message: 'Missing number/tag — skipped', name }); continue; }
-    if (!r.breed) { results.push({ row: rowNum, status: 'skip', message: 'Missing breed — skipped', name }); continue; }
+    // Skip only truly empty rows (nothing useful at all)
+    if (!name && !number && !r.breed) {
+      results.push({ row: rowNum, status: 'skip', message: 'Empty row — skipped', name: `Row ${rowNum}` }); continue;
+    }
 
-    if (existingNumbers.has(number.toLowerCase())) {
+    if (number && existingNumbers.has(number.toLowerCase())) {
       results.push({ row: rowNum, status: 'skip', message: `Tag ${number} already exists`, name }); continue;
     }
 
@@ -102,7 +103,7 @@ async function importAnimals(
       name,
       barnName: barnName || undefined,
       number,
-      breed: r.breed,
+      breed: r.breed || 'Unknown',
       status: status as Animal['status'],
       lactationNumber: isNaN(lactNum) ? 0 : lactNum,
       birthDate: r.birthdate || r['birth date'] || r.dob || undefined,
