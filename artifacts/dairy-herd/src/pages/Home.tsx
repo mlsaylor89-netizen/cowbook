@@ -1,9 +1,9 @@
 import { Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp } from '@/db/computed';
+import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, getWatchForHeatList } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill } from 'lucide-react';
+import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer } from 'lucide-react';
 import { HeatAlerts } from '@/pages/HeatAlerts';
 import { SyncEventWidget } from '@/pages/SyncEventWidget';
 import { seedDemoData } from '@/db/seed';
@@ -50,6 +50,7 @@ export function Home() {
       dryOff: getDryOffList(animals, settings),
       calvings: getUpcomingCalvings(animals),
       treatments: getTreatmentFollowUp(treatments, animals),
+      watchHeat: getWatchForHeatList(animals, breedings),
       lowDrugs,
     };
   });
@@ -178,6 +179,14 @@ export function Home() {
             icon={<CheckSquare className="h-5 w-5 text-purple-600" />}
             href="/checklist/treatments"
             alert={data.treatments.withholding.length > 0}
+          />
+          <ChecklistCard
+            title="Watch for Heat"
+            count={data.watchHeat.length}
+            subtitle={data.watchHeat.length > 0 ? 'Days 20–22 post-breeding' : undefined}
+            icon={<Thermometer className="h-5 w-5 text-rose-500" />}
+            href="/checklist/watch-heat"
+            alert={data.watchHeat.length > 0}
           />
         </div>
       </div>

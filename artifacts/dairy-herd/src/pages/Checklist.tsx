@@ -1,10 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import { getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, processPregCheck } from '@/db/computed';
+import { getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, processPregCheck, getWatchForHeatList } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link, useRoute } from 'wouter';
-import { ArrowLeft, Check, X, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check, X, Calendar, AlertCircle, Thermometer } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
 
@@ -27,7 +27,8 @@ export function Checklist() {
       breedingAttention: getBreedingAttentionList(animals, breedings, settings),
       dryOff: getDryOffList(animals, settings),
       calvings: getUpcomingCalvings(animals),
-      treatments: getTreatmentFollowUp(treatments, animals)
+      treatments: getTreatmentFollowUp(treatments, animals),
+      watchHeat: getWatchForHeatList(animals, breedings),
     };
   });
 
@@ -60,6 +61,10 @@ export function Checklist() {
     case 'treatments':
       title = 'Treatment Follow-Up';
       content = <TreatmentsList data={data.treatments} />;
+      break;
+    case 'watch-heat':
+      title = 'Watch for Heat';
+      content = <WatchHeatList list={data.watchHeat} />;
       break;
     default:
       content = <div>Unknown checklist type.</div>;
@@ -283,6 +288,43 @@ function TreatmentsList({ data }: { data: any }) {
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+function WatchHeatList({ list }: { list: ReturnType<typeof getWatchForHeatList> }) {
+  if (list.length === 0) {
+    return <EmptyState text="No cows in the days 20–22 watch window right now." />;
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground px-1">
+        These cows were bred 20–22 days ago and may return to heat if conception failed.
+        Watch closely and record a heat if observed.
+      </p>
+      {list.map(({ animal, breeding, daysSinceBreeding }) => (
+        <Card key={animal.id} className="border-rose-300 dark:border-rose-800">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Thermometer className="h-4 w-4 text-rose-500 shrink-0" />
+                <Link href={`/herd/${animal.id}`} className="font-bold text-base hover:underline truncate">
+                  {animal.number} {animal.barnName || animal.name}
+                </Link>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5 ml-6">
+                Bred {format(parseISO(breeding.date), 'MMM d')} ·{' '}
+                <span className="font-semibold text-rose-600">Day {daysSinceBreeding} post-breeding</span>
+              </p>
+            </div>
+            <Link href={`/heat?animalId=${animal.id}`} className="shrink-0">
+              <Button size="sm" variant="outline" className="border-rose-300 text-rose-700 hover:bg-rose-50">
+                Record Heat
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

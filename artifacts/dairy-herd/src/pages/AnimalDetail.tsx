@@ -27,14 +27,15 @@ export function AnimalDetail() {
     const pregChecks = await db.pregnancyChecks.where('animalId').equals(id).reverse().sortBy('checkDate');
     const notes = await db.animalNotes.where('animalId').equals(id).reverse().sortBy('createdAt');
     const classifications = await db.classifications.where('animalId').equals(id).reverse().sortBy('date');
+    const heats = await db.heats.where('animalId').equals(id).reverse().sortBy('observedAt');
 
-    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications };
+    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats };
   }, [id]);
 
   if (data === undefined) return <div className="p-4">Loading...</div>;
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
-  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications } = data;
+  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats } = data;
   const dim = getDIM(animal);
 
   return (
@@ -161,29 +162,64 @@ export function AnimalDetail() {
         )}
 
         <div className="space-y-3">
-          {breedings.map(b => (
-            <Card key={b.id}>
-              <CardContent className="p-3 flex items-start gap-3">
-                <Heart className="h-5 w-5 mt-0.5 text-destructive shrink-0" />
-                <div>
-                  <p className="font-bold">{b.breedingType} Breeding</p>
-                  <p className="text-sm text-muted-foreground">{format(parseISO(b.date), 'MMM d, yyyy')} • Bull: {b.bullId || 'Unknown'}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {calvings.map(c => (
-            <Card key={c.id}>
-              <CardContent className="p-3 flex items-start gap-3">
-                <Baby className="h-5 w-5 mt-0.5 text-primary shrink-0" />
-                <div>
-                  <p className="font-bold">Calved ({c.calfSex})</p>
-                  <p className="text-sm text-muted-foreground">{format(parseISO(c.calvingDate), 'MMM d, yyyy')}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {breedings.length === 0 && calvings.length === 0 && pregChecks.length === 0 && (
+          {/* Unified chronological timeline */}
+          {[
+            ...breedings.map(b => ({ type: 'breeding' as const, date: b.date, item: b })),
+            ...calvings.map(c => ({ type: 'calving'  as const, date: c.calvingDate, item: c })),
+            ...heats.map(h =>    ({ type: 'heat'     as const, date: h.observedAt,  item: h })),
+          ]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .map(entry => {
+              if (entry.type === 'breeding') {
+                const b = entry.item as (typeof breedings)[0];
+                return (
+                  <Card key={`b-${b.id}`}>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <Heart className="h-5 w-5 mt-0.5 text-destructive shrink-0" />
+                      <div>
+                        <p className="font-bold">{b.breedingType} Breeding</p>
+                        <p className="text-sm text-muted-foreground">{format(parseISO(b.date), 'MMM d, yyyy')} · Bull: {b.bullId || 'Unknown'}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              if (entry.type === 'calving') {
+                const c = entry.item as (typeof calvings)[0];
+                return (
+                  <Card key={`c-${c.id}`}>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <Baby className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <div>
+                        <p className="font-bold">Calved ({c.calfSex})</p>
+                        <p className="text-sm text-muted-foreground">{format(parseISO(c.calvingDate), 'MMM d, yyyy')}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              // heat
+              const h = entry.item as (typeof heats)[0];
+              const statusLabel = h.status === 'bred' ? 'Bred' : h.status === 'missed' ? 'Dismissed' : 'Pending';
+              const statusColor  = h.status === 'bred' ? 'text-green-600' : h.status === 'missed' ? 'text-muted-foreground' : 'text-amber-600';
+              return (
+                <Card key={`h-${h.id}`}>
+                  <CardContent className="p-3 flex items-start gap-3">
+                    <Thermometer className="h-5 w-5 mt-0.5 text-rose-500 shrink-0" />
+                    <div>
+                      <p className="font-bold">Heat Observed — {h.breedingType === 'sexed' ? 'Sexed' : 'Conventional'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(parseISO(h.observedAt), 'MMM d, yyyy h:mm a')}
+                        {' · '}Breed by {format(parseISO(h.scheduledBreedAt), 'h:mm a')}
+                      </p>
+                      <span className={`text-xs font-semibold ${statusColor}`}>{statusLabel}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          }
+          {breedings.length === 0 && calvings.length === 0 && heats.length === 0 && pregChecks.length === 0 && (
             <p className="text-muted-foreground text-center py-4 text-sm">No history records.</p>
           )}
         </div>

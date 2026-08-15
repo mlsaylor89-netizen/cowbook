@@ -189,6 +189,36 @@ export function getTreatmentFollowUp(treatments: Treatment[], animals: Animal[])
   };
 }
 
+/**
+ * Cows in days 20–22 post-breeding whose reproStatus is still 'Bred'
+ * (not yet confirmed pregnant or open) — prime window to watch for return
+ * to heat, which would indicate a failed conception.
+ */
+export function getWatchForHeatList(animals: Animal[], breedings: Breeding[]) {
+  const now = new Date();
+  return animals
+    .filter(a => {
+      if (!isActive(a)) return false;
+      if (reproStat(a) !== 'Bred') return false;
+      const last = breedings
+        .filter(b => b.animalId === a.id)
+        .sort((x, y) => parseISO(y.date).getTime() - parseISO(x.date).getTime())[0];
+      if (!last) return false;
+      const days = differenceInDays(now, parseISO(last.date));
+      return days >= 20 && days <= 22;
+    })
+    .map(a => {
+      const last = breedings
+        .filter(b => b.animalId === a.id)
+        .sort((x, y) => parseISO(y.date).getTime() - parseISO(x.date).getTime())[0];
+      return {
+        animal: a,
+        breeding: last,
+        daysSinceBreeding: differenceInDays(now, parseISO(last.date)),
+      };
+    });
+}
+
 export async function processBreeding(data: Omit<Breeding, 'id' | 'createdAt' | 'updatedAt'>) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
