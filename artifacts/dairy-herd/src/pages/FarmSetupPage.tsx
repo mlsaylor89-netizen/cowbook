@@ -25,18 +25,29 @@ export function FarmSetupPage() {
     if (!farmName.trim()) return;
     setError('');
     setLoading(true);
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Request timed out — check your connection and try again')),
+        15000,
+      ),
+    );
     try {
-      const { joinCode: code } = await createFarm(
-        user!.uid,
-        user!.email!,
-        displayName.trim() || user!.email!,
-        farmName.trim(),
-      );
+      const { joinCode: code } = await Promise.race([
+        createFarm(
+          user!.uid,
+          user!.email!,
+          displayName.trim() || user!.email!,
+          farmName.trim(),
+        ),
+        timeout,
+      ]);
       setCreatedCode(code);
       setStep('created');
       await refreshUserDoc();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create farm');
+      console.error('[createFarm]', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'Failed to create farm — check your connection and try again');
     } finally {
       setLoading(false);
     }
