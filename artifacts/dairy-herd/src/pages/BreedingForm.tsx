@@ -29,7 +29,12 @@ export function BreedingForm() {
 
   const { animals, bulls, embryos, settings } = useLiveQuery(async () => {
     return {
-      animals: await db.animals.where('status').anyOf(['Open', 'Heifer']).toArray(),
+      animals: (await db.animals.toArray()).filter(a => {
+        const s = a.status;
+        if (s === 'Sold' || s === 'Dead') return false;
+        const rs = a.reproStatus ?? (s === 'Pregnant' ? 'Pregnant' : s === 'BredHeifer' ? 'Bred' : 'Open');
+        return rs === 'Open' || rs === 'Bred';
+      }),
       bulls: await db.semenBulls.toArray(),
       embryos: await db.embryos.toArray(),
       settings: await db.settings.get('default')

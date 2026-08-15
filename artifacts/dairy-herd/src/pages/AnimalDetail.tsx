@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { StatusBadge } from './HerdList';
+import { LactationBadge, ReproBadge } from './HerdList';
+import { lactStat, reproStat } from '@/db/computed';
 import type { ClassificationScore } from '@/db';
 
 export function AnimalDetail() {
@@ -81,29 +82,63 @@ export function AnimalDetail() {
 
       {/* Info Card */}
       <Card>
-        <CardContent className="p-4 grid grid-cols-2 gap-y-4 gap-x-4">
-          <div>
-            <p className="text-xs text-muted-foreground uppercase">Status</p>
-            <div className="mt-1"><StatusBadge status={animal.status} /></div>
+        <CardContent className="p-4 space-y-4">
+          {/* Status row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <LactationBadge status={lactStat(animal)} />
+            <ReproBadge status={reproStat(animal)} />
+            {dim !== null && (
+              <span className="text-sm text-muted-foreground">{dim} DIM</span>
+            )}
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase">DIM</p>
-            <p className="font-bold">{dim !== null ? dim : '-'}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase">Lactation</p>
-            <p className="font-bold">{animal.lactationNumber}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase">Breed</p>
-            <p className="font-bold">{animal.breed}</p>
-          </div>
+
           {animal.expectedCalvingDate && (
-            <div className="col-span-2 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-900">
+            <div className="bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-900">
               <p className="text-xs text-amber-800 dark:text-amber-500 uppercase font-bold">Due Date</p>
               <p className="font-bold text-amber-900 dark:text-amber-400">{format(parseISO(animal.expectedCalvingDate), 'MMM d, yyyy')}</p>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase">Lactation #</p>
+              <p className="font-bold">{animal.lactationNumber}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase">Breed</p>
+              <p className="font-bold">{animal.breed}</p>
+            </div>
+            {animal.lastCalvingDate && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Last Calving</p>
+                <p className="font-bold">{format(parseISO(animal.lastCalvingDate), 'MMM d, yyyy')}</p>
+              </div>
+            )}
+            {animal.birthDate && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Date of Birth</p>
+                <p className="font-bold">{format(parseISO(animal.birthDate), 'MMM d, yyyy')}</p>
+              </div>
+            )}
+            {animal.sire && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Sire</p>
+                <p className="font-bold">{animal.sire}</p>
+              </div>
+            )}
+            {animal.dam && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Dam</p>
+                <p className="font-bold">{animal.dam}</p>
+              </div>
+            )}
+            {animal.rfidTag && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">RFID</p>
+                <p className="font-bold font-mono text-sm">{animal.rfidTag}</p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

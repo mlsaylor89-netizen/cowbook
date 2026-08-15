@@ -8,9 +8,15 @@ export interface Animal {
   registrationNumber?: string;
   rfidTag?: string;
   breed: string;
-  birthDate?: string;
+  birthDate?: string;       // date of birth
+  sire?: string;            // sire name / registration (free text)
+  dam?: string;             // dam name / registration (free text)
   lactationNumber: number;
+  // Legacy combined status — kept for Dexie index & backward compat
   status: 'Lactating' | 'Dry' | 'Heifer' | 'BredHeifer' | 'Pregnant' | 'Open' | 'Sold' | 'Dead';
+  // New split statuses — preferred by computed functions
+  lactationStatus?: 'Milking' | 'Dry' | 'Heifer';
+  reproStatus?: 'Open' | 'Bred' | 'Pregnant' | 'Fresh';
   lastCalvingDate?: string;
   expectedCalvingDate?: string;
   expectedDryOffDate?: string;

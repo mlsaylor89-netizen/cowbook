@@ -43,16 +43,16 @@ export async function seedDemoData() {
 
   // Animals
   const animals = [
-    { id: 'cow-1', name: 'Daisy', number: '101', breed: 'Holstein', status: 'Lactating', lactationNumber: 2, lastCalvingDate: subDays(now, 5).toISOString() }, // Fresh
-    { id: 'cow-2', name: 'Bessie', number: '102', breed: 'Holstein', status: 'Open', lactationNumber: 3, lastCalvingDate: subDays(now, 75).toISOString() }, // Breeding Attention
-    { id: 'cow-3', name: 'Rosie', number: '103', breed: 'Holstein', status: 'Open', lactationNumber: 1, lastCalvingDate: subDays(now, 90).toISOString() }, // Bred, not ready for preg check
-    { id: 'cow-4', name: 'Clover', number: '104', breed: 'Holstein', status: 'Open', lactationNumber: 4, lastCalvingDate: subDays(now, 120).toISOString() }, // Ready for preg check
-    { id: 'cow-5', name: 'Maple', number: '105', breed: 'Holstein', status: 'Pregnant', lactationNumber: 2, lastCalvingDate: subDays(now, 300).toISOString(), expectedCalvingDate: addDays(now, 78).toISOString(), expectedDryOffDate: addDays(now, 18).toISOString() }, // Approaching dry off
-    { id: 'cow-6', name: 'Buttercup', number: '106', breed: 'Holstein', status: 'Dry', lactationNumber: 3, lastCalvingDate: subDays(now, 380).toISOString(), expectedCalvingDate: addDays(now, 5).toISOString() }, // Due to calve
-    { id: 'cow-7', name: 'Hazel', number: '107', breed: 'Holstein', status: 'Lactating', lactationNumber: 1, lastCalvingDate: subDays(now, 45).toISOString() }, // Treatment
-    { id: 'cow-8', name: 'Pearl', number: '108', breed: 'Holstein', status: 'Dry', lactationNumber: 5, expectedCalvingDate: addDays(now, 40).toISOString() }, // Just dry
-    { id: 'cow-9', name: 'Fern', number: '109', breed: 'Holstein', status: 'Heifer', lactationNumber: 0, birthDate: subDays(now, 400).toISOString() },
-    { id: 'cow-10', name: 'Ivy', number: '110', breed: 'Holstein', status: 'BredHeifer', lactationNumber: 0, birthDate: subDays(now, 500).toISOString(), expectedCalvingDate: addDays(now, 150).toISOString() }
+    { id: 'cow-1',  name: 'Daisy',     number: '101', breed: 'Holstein', status: 'Lactating',  lactationStatus: 'Milking', reproStatus: 'Fresh',    lactationNumber: 2, lastCalvingDate: subDays(now, 5).toISOString() },
+    { id: 'cow-2',  name: 'Bessie',    number: '102', breed: 'Holstein', status: 'Open',        lactationStatus: 'Milking', reproStatus: 'Open',     lactationNumber: 3, lastCalvingDate: subDays(now, 75).toISOString() },
+    { id: 'cow-3',  name: 'Rosie',     number: '103', breed: 'Holstein', status: 'Open',        lactationStatus: 'Milking', reproStatus: 'Bred',     lactationNumber: 1, lastCalvingDate: subDays(now, 90).toISOString() },
+    { id: 'cow-4',  name: 'Clover',    number: '104', breed: 'Holstein', status: 'Open',        lactationStatus: 'Milking', reproStatus: 'Bred',     lactationNumber: 4, lastCalvingDate: subDays(now, 120).toISOString() },
+    { id: 'cow-5',  name: 'Maple',     number: '105', breed: 'Holstein', status: 'Pregnant',    lactationStatus: 'Milking', reproStatus: 'Pregnant', lactationNumber: 2, lastCalvingDate: subDays(now, 300).toISOString(), expectedCalvingDate: addDays(now, 78).toISOString(), expectedDryOffDate: addDays(now, 18).toISOString() },
+    { id: 'cow-6',  name: 'Buttercup', number: '106', breed: 'Holstein', status: 'Dry',         lactationStatus: 'Dry',    reproStatus: 'Pregnant', lactationNumber: 3, lastCalvingDate: subDays(now, 380).toISOString(), expectedCalvingDate: addDays(now, 5).toISOString() },
+    { id: 'cow-7',  name: 'Hazel',     number: '107', breed: 'Holstein', status: 'Lactating',   lactationStatus: 'Milking', reproStatus: 'Open',    lactationNumber: 1, lastCalvingDate: subDays(now, 45).toISOString() },
+    { id: 'cow-8',  name: 'Pearl',     number: '108', breed: 'Holstein', status: 'Dry',         lactationStatus: 'Dry',    reproStatus: 'Pregnant', lactationNumber: 5, expectedCalvingDate: addDays(now, 40).toISOString() },
+    { id: 'cow-9',  name: 'Fern',      number: '109', breed: 'Holstein', status: 'Heifer',      lactationStatus: 'Heifer', reproStatus: 'Open',     lactationNumber: 0, birthDate: subDays(now, 400).toISOString() },
+    { id: 'cow-10', name: 'Ivy',       number: '110', breed: 'Holstein', status: 'BredHeifer',  lactationStatus: 'Heifer', reproStatus: 'Pregnant', lactationNumber: 0, birthDate: subDays(now, 500).toISOString(), expectedCalvingDate: addDays(now, 150).toISOString() }
   ].map(a => ({ ...a, farmId: 'demo-farm', createdAt: nowIso, updatedAt: nowIso })) as any;
 
   await db.animals.bulkAdd(animals);

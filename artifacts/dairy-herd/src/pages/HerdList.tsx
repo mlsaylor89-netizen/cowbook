@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import { getDIM } from '@/db/computed';
+import { getDIM, lactStat, reproStat } from '@/db/computed';
 import { Link } from 'wouter';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,9 +66,10 @@ export function HerdList() {
                     </div>
                     <div>
                       <p className="font-bold text-base leading-tight">{animal.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <StatusBadge status={animal.status} />
-                        {(animal.status === 'Lactating' || animal.status === 'Open' || animal.status === 'Pregnant') && (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <LactationBadge status={lactStat(animal)} />
+                        <ReproBadge status={reproStat(animal)} />
+                        {lactStat(animal) !== 'Heifer' && getDIM(animal) !== null && (
                           <span className="text-xs text-muted-foreground">{getDIM(animal)} DIM</span>
                         )}
                       </div>
@@ -84,9 +85,9 @@ export function HerdList() {
   );
 }
 
+/** Legacy badge — still used by AnimalDetail for old records without split fields */
 export function StatusBadge({ status }: { status: string }) {
   let color = 'bg-gray-100 text-gray-800 border-gray-200';
-  
   switch (status) {
     case 'Lactating': color = 'bg-green-100 text-green-800 border-green-200'; break;
     case 'Dry': color = 'bg-blue-100 text-blue-800 border-blue-200'; break;
@@ -94,7 +95,33 @@ export function StatusBadge({ status }: { status: string }) {
     case 'Open': color = 'bg-red-100 text-red-800 border-red-200'; break;
     case 'Heifer': case 'BredHeifer': color = 'bg-purple-100 text-purple-800 border-purple-200'; break;
   }
+  return (
+    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${color}`}>
+      {status}
+    </span>
+  );
+}
 
+export function LactationBadge({ status }: { status: string }) {
+  const color =
+    status === 'Milking' ? 'bg-green-100 text-green-800 border-green-200' :
+    status === 'Dry'     ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                           'bg-purple-100 text-purple-800 border-purple-200';
+  const label = status === 'Milking' ? 'Milking' : status;
+  return (
+    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${color}`}>
+      {label}
+    </span>
+  );
+}
+
+export function ReproBadge({ status }: { status: string }) {
+  const color =
+    status === 'Open'     ? 'bg-red-100 text-red-800 border-red-200' :
+    status === 'Bred'     ? 'bg-amber-100 text-amber-800 border-amber-200' :
+    status === 'Pregnant' ? 'bg-amber-200 text-amber-900 border-amber-300' :
+    status === 'Fresh'    ? 'bg-sky-100 text-sky-800 border-sky-200' :
+                            'bg-gray-100 text-gray-800 border-gray-200';
   return (
     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${color}`}>
       {status}
