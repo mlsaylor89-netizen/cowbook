@@ -13,6 +13,7 @@ import {
   Pill,
   LogOut,
   User,
+  FileUp,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 
@@ -35,6 +36,7 @@ export function MoreMenu() {
 
       <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider px-1 pt-4">System</h3>
       <div className="space-y-2">
+        <MenuLink href="/import" icon={<FileUp className="h-5 w-5 text-indigo-600" />} title="Batch Import" />
         <MenuLink href="/settings" icon={<Settings className="h-5 w-5 text-gray-600" />} title="Settings" />
         <MenuLink href="/backup" icon={<DownloadCloud className="h-5 w-5 text-green-600" />} title="Backup & Restore" />
       </div>

@@ -32,6 +32,7 @@ import { Reports } from '@/pages/Reports';
 import { PrintReport } from '@/pages/PrintReport';
 import { Settings } from '@/pages/Settings';
 import { Backup } from '@/pages/Backup';
+import { BatchImport } from '@/pages/BatchImport';
 import { Checklist } from '@/pages/Checklist';
 import { TreatmentForm } from '@/pages/TreatmentForm';
 import { TreatmentLog } from '@/pages/TreatmentLog';
@@ -144,6 +145,7 @@ function Router() {
           <Route path="/print-report" component={PrintReport} />
           <Route path="/settings" component={Settings} />
           <Route path="/backup" component={Backup} />
+          <Route path="/import" component={BatchImport} />
           
           <Route component={NotFound} />
         </Switch>
