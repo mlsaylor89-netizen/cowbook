@@ -40,6 +40,7 @@ import { CalvingForm } from '@/pages/CalvingForm';
 import { PregCheckForm } from '@/pages/PregCheckForm';
 import { ClassificationForm } from '@/pages/ClassificationForm';
 import { RecordHeat } from '@/pages/RecordHeat';
+import { SyncProtocol } from '@/pages/SyncProtocol';
 
 // Firebase auth + sync
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -142,6 +143,7 @@ function Router() {
           <Route path="/pharmacy/:id/edit" component={DrugForm} />
           
           <Route path="/heat" component={RecordHeat} />
+          <Route path="/sync-protocol" component={SyncProtocol} />
 
           <Route path="/more" component={MoreMenu} />
           <Route path="/reports" component={Reports} />

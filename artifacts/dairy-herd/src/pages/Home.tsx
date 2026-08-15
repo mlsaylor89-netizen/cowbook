@@ -5,6 +5,7 @@ import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttention
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill } from 'lucide-react';
 import { HeatAlerts } from '@/pages/HeatAlerts';
+import { SyncEventWidget } from '@/pages/SyncEventWidget';
 import { seedDemoData } from '@/db/seed';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,9 @@ export function Home() {
           </Button>
         </div>
       )}
+
+      {/* Sync Protocol Events */}
+      <SyncEventWidget />
 
       {/* Heat Alarms */}
       <HeatAlerts />

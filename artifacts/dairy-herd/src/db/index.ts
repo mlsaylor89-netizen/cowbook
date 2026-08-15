@@ -200,6 +200,37 @@ export interface Settings {
   updatedAt: string;
 }
 
+export type SyncProtocolType = 'ovsynch' | 'cidr-ovsynch' | '5day-cidr' | 'presynch-ovsynch';
+export type SyncEventType = 'gnrh' | 'pgf' | 'cidr-insert' | 'cidr-remove' | 'timed-ai';
+
+export interface SyncProtocolBatch {
+  id: string;
+  farmId: string;
+  protocol: SyncProtocolType;
+  startDate: string;       // 'yyyy-MM-dd' — Day 0
+  animalIds: string[];
+  status: 'active' | 'completed' | 'cancelled';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncEvent {
+  id: string;
+  farmId: string;
+  batchId: string;
+  animalId: string;
+  day: number;             // offset from startDate (can be 0)
+  eventType: SyncEventType;
+  label: string;           // e.g. 'GnRH #1', 'PGF₂α'
+  scheduledDate: string;   // 'yyyy-MM-dd'
+  status: 'pending' | 'completed' | 'skipped';
+  completedAt?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HeatObservation {
   id: string;
   animalId: string;
@@ -229,6 +260,8 @@ export class DairyHerdDB extends Dexie {
   embryoPurchases!: Table<EmbryoPurchase, string>;
   drugProducts!: Table<DrugProduct, string>;
   heats!: Table<HeatObservation, string>;
+  syncProtocolBatches!: Table<SyncProtocolBatch, string>;
+  syncEvents!: Table<SyncEvent, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -266,6 +299,11 @@ export class DairyHerdDB extends Dexie {
     // v8: heat observations & alarms
     this.version(8).stores({
       heats: 'id, animalId, farmId, status, scheduledBreedAt',
+    });
+    // v9: reproductive sync protocols
+    this.version(9).stores({
+      syncProtocolBatches: 'id, farmId, status',
+      syncEvents: 'id, batchId, animalId, scheduledDate, status, farmId',
     });
   }
 }
