@@ -3,6 +3,9 @@ import {
   doc,
   getDoc,
   getDocFromCache,
+  getDocs,
+  query,
+  where,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -130,10 +133,22 @@ export async function joinFarmByCode(
   code: string,
 ): Promise<string> {
   const normalised = code.toUpperCase().trim();
-  const codeSnap = await getDoc(doc(firestore, 'farmCodes', normalised));
-  if (!codeSnap.exists()) throw new Error('Invalid join code – double-check and try again.');
 
-  const { farmId } = codeSnap.data() as { farmId: string };
+  // Primary: fast lookup via farmCodes index doc
+  let farmId: string | null = null;
+  const codeSnap = await getDoc(doc(firestore, 'farmCodes', normalised));
+  if (codeSnap.exists()) {
+    farmId = (codeSnap.data() as { farmId: string }).farmId;
+  } else {
+    // Fallback: the farmCodes doc may have been missed during farm creation —
+    // query the farms collection directly by joinCode field.
+    const q = query(collection(firestore, 'farms'), where('joinCode', '==', normalised));
+    const snap = await getDocs(q);
+    if (snap.empty) throw new Error('Invalid join code – double-check and try again.');
+    farmId = snap.docs[0].id;
+    // Repair the missing lookup doc so future joins are fast
+    await setDoc(doc(firestore, 'farmCodes', normalised), { farmId });
+  }
 
   const farmSnap = await getDoc(doc(firestore, 'farms', farmId));
   if (!farmSnap.exists()) throw new Error('Farm not found – the join code may be outdated.');

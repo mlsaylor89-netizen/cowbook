@@ -58,13 +58,22 @@ export function FarmSetupPage() {
     if (!joinCode.trim()) return;
     setError('');
     setLoading(true);
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Request timed out — check your connection and try again')),
+        15000,
+      ),
+    );
     try {
-      await joinFarmByCode(
-        user!.uid,
-        user!.email!,
-        displayName.trim() || user!.email!,
-        joinCode.trim(),
-      );
+      await Promise.race([
+        joinFarmByCode(
+          user!.uid,
+          user!.email!,
+          displayName.trim() || user!.email!,
+          joinCode.trim(),
+        ),
+        timeout,
+      ]);
       await refreshUserDoc();
       // AuthGuard will detect farmId is now set and show the main app
     } catch (err: unknown) {
