@@ -33,6 +33,23 @@ let currentFarmId: string | null = null;
 const hookUnsubs: Array<() => void> = [];
 const snapUnsubs: Array<() => void> = [];
 
+/**
+ * Debounced write queue.
+ * Key: "collName/id"  Value: { timer, data: object (put) | null (delete) }
+ *
+ * Coalesces rapid edits to the same record so we fire one Firestore write
+ * instead of one per keystroke/save, cutting the onSnapshot cascade and
+ * useLiveQuery re-render storm that makes the app feel sluggish after
+ * several quick changes.
+ */
+const DEBOUNCE_MS = 400;
+const pendingWrites = new Map<string, { timer: ReturnType<typeof setTimeout>; data: object | null }>();
+
+function flushPending() {
+  for (const [, entry] of pendingWrites) clearTimeout(entry.timer);
+  pendingWrites.clear();
+}
+
 // ─── Table list ────────────────────────────────────────────────────────────
 
 const COLLECTIONS = [
@@ -70,21 +87,37 @@ function clean(obj: unknown): object {
 
 function pushToCloud(collName: string, id: string, data: object) {
   if (!currentFarmId) return;
-  setDoc(
-    doc(firestore, 'farms', currentFarmId, collName, id),
-    clean(data),
-  ).catch((err: Error) =>
-    console.error(`[sync] push ${collName}/${id}:`, err.message),
-  );
+  const key = `${collName}/${id}`;
+  const existing = pendingWrites.get(key);
+  if (existing) clearTimeout(existing.timer);
+  const farmId = currentFarmId;
+  const timer = setTimeout(() => {
+    pendingWrites.delete(key);
+    setDoc(
+      doc(firestore, 'farms', farmId, collName, id),
+      clean(data),
+    ).catch((err: Error) =>
+      console.error(`[sync] push ${collName}/${id}:`, err.message),
+    );
+  }, DEBOUNCE_MS);
+  pendingWrites.set(key, { timer, data });
 }
 
 function deleteFromCloud(collName: string, id: string) {
   if (!currentFarmId) return;
-  deleteDoc(
-    doc(firestore, 'farms', currentFarmId, collName, id),
-  ).catch((err: Error) =>
-    console.error(`[sync] delete ${collName}/${id}:`, err.message),
-  );
+  const key = `${collName}/${id}`;
+  const existing = pendingWrites.get(key);
+  if (existing) clearTimeout(existing.timer);
+  const farmId = currentFarmId;
+  const timer = setTimeout(() => {
+    pendingWrites.delete(key);
+    deleteDoc(
+      doc(firestore, 'farms', farmId, collName, id),
+    ).catch((err: Error) =>
+      console.error(`[sync] delete ${collName}/${id}:`, err.message),
+    );
+  }, DEBOUNCE_MS);
+  pendingWrites.set(key, { timer, data: null });
 }
 
 // ─── Dexie → Firestore (hooks) ─────────────────────────────────────────────
@@ -182,6 +215,7 @@ export function startSync(farmId: string) {
 }
 
 export function stopSync() {
+  flushPending();
   hookUnsubs.splice(0).forEach((fn) => fn());
   snapUnsubs.splice(0).forEach((fn) => fn());
   syncingIds.clear();
