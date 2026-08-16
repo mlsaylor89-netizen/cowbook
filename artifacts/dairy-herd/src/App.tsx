@@ -41,6 +41,8 @@ import { PregCheckForm } from '@/pages/PregCheckForm';
 import { ClassificationForm } from '@/pages/ClassificationForm';
 import { RecordHeat } from '@/pages/RecordHeat';
 import { SyncProtocol } from '@/pages/SyncProtocol';
+import { FlushHistory } from '@/pages/FlushHistory';
+import { FlushForm } from '@/pages/FlushForm';
 
 // Firebase auth + sync
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -145,6 +147,8 @@ function Router() {
           
           <Route path="/heat" component={RecordHeat} />
           <Route path="/sync-protocol" component={SyncProtocol} />
+          <Route path="/flush" component={FlushHistory} />
+          <Route path="/flush/new" component={FlushForm} />
 
           <Route path="/more" component={MoreMenu} />
           <Route path="/reports" component={Reports} />

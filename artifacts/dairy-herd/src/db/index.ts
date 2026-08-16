@@ -173,6 +173,25 @@ export interface EmbryoPurchase {
   updatedAt: string;
 }
 
+export interface FlushRecord {
+  id: string;
+  animalId: string;
+  flushDate: string;
+  flushType: 'conventional' | 'ivf';
+  sireName?: string;
+  // Grade counts (both flush types)
+  grade1Count?: number;
+  grade2Count?: number;
+  grade3Count?: number;
+  // Conventional flush only: unfertilized ova
+  unfertilizedCount?: number;
+  // IVF only: total oocytes collected
+  oocyteCount?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type DrugRoute = 'IM' | 'SQ' | 'IV' | 'Oral' | 'Intramammary' | 'Topical' | 'Other';
 
 export interface DrugProduct {
@@ -271,6 +290,7 @@ export class DairyHerdDB extends Dexie {
   heats!: Table<HeatObservation, string>;
   syncProtocolBatches!: Table<SyncProtocolBatch, string>;
   syncEvents!: Table<SyncEvent, string>;
+  flushRecords!: Table<FlushRecord, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -313,6 +333,10 @@ export class DairyHerdDB extends Dexie {
     this.version(9).stores({
       syncProtocolBatches: 'id, farmId, status',
       syncEvents: 'id, batchId, animalId, scheduledDate, status, farmId',
+    });
+    // v10: flush / IVF records
+    this.version(10).stores({
+      flushRecords: 'id, animalId, flushDate',
     });
   }
 }
