@@ -60,6 +60,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56" sideOffset={16}>
             <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/breeding')}>Record Breeding</DropdownMenuItem>
+            <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/heat')}>Record Heat</DropdownMenuItem>
             <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/treatment')}>Record Treatment</DropdownMenuItem>
             <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/herd/new')}>Add Animal</DropdownMenuItem>
           </DropdownMenuContent>
