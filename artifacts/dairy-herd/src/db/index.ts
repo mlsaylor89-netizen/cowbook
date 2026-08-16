@@ -127,6 +127,8 @@ export interface SemenBull {
   registrationNumber?: string;
   breed: string;
   studCompany?: string;
+  tankNumber?: string;
+  canisterNumber?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;

@@ -28,6 +28,8 @@ export function SemenBullForm() {
     registrationNumber: '',
     breed: '',
     studCompany: '',
+    tankNumber: '',
+    canisterNumber: '',
     notes: '',
   });
 
@@ -40,6 +42,8 @@ export function SemenBullForm() {
         registrationNumber: existingBull.registrationNumber ?? '',
         breed: existingBull.breed ?? '',
         studCompany: existingBull.studCompany ?? '',
+        tankNumber: existingBull.tankNumber ?? '',
+        canisterNumber: existingBull.canisterNumber ?? '',
         notes: existingBull.notes ?? '',
       });
     }
@@ -55,30 +59,22 @@ export function SemenBullForm() {
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      const fields = {
+        name: form.name.trim(),
+        naabCode: form.naabCode.trim() || undefined,
+        registrationNumber: form.registrationNumber.trim() || undefined,
+        breed: form.breed.trim(),
+        studCompany: form.studCompany.trim() || undefined,
+        tankNumber: form.tankNumber.trim() || undefined,
+        canisterNumber: form.canisterNumber.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+      };
       if (editId) {
-        await db.semenBulls.update(editId, {
-          name: form.name.trim(),
-          naabCode: form.naabCode.trim() || undefined,
-          registrationNumber: form.registrationNumber.trim() || undefined,
-          breed: form.breed.trim(),
-          studCompany: form.studCompany.trim() || undefined,
-          notes: form.notes.trim() || undefined,
-          updatedAt: now,
-        });
+        await db.semenBulls.update(editId, { ...fields, updatedAt: now });
         setLocation(`/semen/${editId}`);
       } else {
         const id = self.crypto.randomUUID();
-        await db.semenBulls.add({
-          id,
-          name: form.name.trim(),
-          naabCode: form.naabCode.trim() || undefined,
-          registrationNumber: form.registrationNumber.trim() || undefined,
-          breed: form.breed.trim(),
-          studCompany: form.studCompany.trim() || undefined,
-          notes: form.notes.trim() || undefined,
-          createdAt: now,
-          updatedAt: now,
-        });
+        await db.semenBulls.add({ id, ...fields, createdAt: now, updatedAt: now });
         setLocation(`/semen/${id}`);
       }
     } finally {
@@ -157,6 +153,30 @@ export function SemenBullForm() {
             value={form.registrationNumber}
             onChange={e => set('registrationNumber', e.target.value)}
           />
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Storage Location</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="tankNumber">Tank #</Label>
+              <Input
+                id="tankNumber"
+                value={form.tankNumber}
+                onChange={e => set('tankNumber', e.target.value)}
+                placeholder="e.g. Tank 1"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="canisterNumber">Canister #</Label>
+              <Input
+                id="canisterNumber"
+                value={form.canisterNumber}
+                onChange={e => set('canisterNumber', e.target.value)}
+                placeholder="e.g. C3"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-1.5">
