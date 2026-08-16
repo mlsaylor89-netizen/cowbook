@@ -5,10 +5,15 @@ import { getDIM, lactStat, reproStat } from '@/db/computed';
 import { Link } from 'wouter';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Plus, Trash2, CheckSquare, Square, X } from 'lucide-react';
+import { Search, Plus, Trash2, CheckSquare, Square, X, ArrowDownAZ, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/useAuth';
+
+type SortMode = 'name' | 'number';
+function getSavedSort(): SortMode {
+  return (localStorage.getItem('herdSort') as SortMode) ?? 'name';
+}
 
 /** Delete an animal and every related record. */
 async function deleteAnimals(ids: string[]) {
@@ -48,6 +53,7 @@ async function deleteAnimals(ids: string[]) {
 
 export function HerdList() {
   const [search, setSearch] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>(getSavedSort);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -56,9 +62,14 @@ export function HerdList() {
   const { userDoc } = useAuth();
   const isViewer = userDoc?.role === 'viewer';
 
+  function toggleSort() {
+    const next: SortMode = sortMode === 'name' ? 'number' : 'name';
+    setSortMode(next);
+    localStorage.setItem('herdSort', next);
+  }
+
   const animals = useLiveQuery(async () => {
     let all = await db.animals.toArray();
-    all.sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name));
     if (search.trim()) {
       const s = search.toLowerCase();
       all = all.filter(a =>
@@ -70,6 +81,14 @@ export function HerdList() {
     }
     return all;
   }, [search]);
+
+  const sorted = animals
+    ? [...animals].sort((a, b) =>
+        sortMode === 'number'
+          ? a.number.localeCompare(b.number, undefined, { numeric: true })
+          : (a.barnName || a.name).localeCompare(b.barnName || b.name)
+      )
+    : undefined;
 
   function exitSelectMode() {
     setSelectMode(false);
@@ -86,8 +105,8 @@ export function HerdList() {
   }
 
   function toggleAll() {
-    if (!animals) return;
-    const allIds = animals.map(a => a.id);
+    if (!sorted) return;
+    const allIds = sorted.map(a => a.id);
     const allSelected = allIds.every(id => selected.has(id));
     setSelected(allSelected ? new Set() : new Set(allIds));
   }
@@ -102,7 +121,7 @@ export function HerdList() {
     }
   }
 
-  const allSelected = !!animals?.length && animals.every(a => selected.has(a.id));
+  const allSelected = !!sorted?.length && sorted.every(a => selected.has(a.id));
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
@@ -110,12 +129,16 @@ export function HerdList() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Herd</h2>
         <div className="flex gap-2">
+          {/* Sort toggle */}
+          {!selectMode && (
+            <Button size="sm" variant="outline" onClick={toggleSort} title={`Sorted by ${sortMode}. Click to sort by ${sortMode === 'name' ? 'number' : 'name'}`}>
+              {sortMode === 'name'
+                ? <><ArrowDownAZ className="h-4 w-4 mr-1.5" />Name</>
+                : <><Hash className="h-4 w-4 mr-1.5" />Number</>}
+            </Button>
+          )}
           {!isViewer && !selectMode && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSelectMode(true)}
-            >
+            <Button size="sm" variant="outline" onClick={() => setSelectMode(true)}>
               <CheckSquare className="h-4 w-4 mr-1.5" /> Select
             </Button>
           )}
@@ -146,7 +169,7 @@ export function HerdList() {
       </div>
 
       {/* Select-all bar */}
-      {selectMode && !!animals?.length && (
+      {selectMode && !!sorted?.length && (
         <div className="flex items-center justify-between px-1">
           <button
             className="flex items-center gap-2 text-sm font-medium text-foreground"
@@ -164,15 +187,15 @@ export function HerdList() {
       )}
 
       {/* Animal list */}
-      {animals === undefined ? (
+      {sorted === undefined ? (
         <div className="p-4 text-center text-muted-foreground">Loading...</div>
-      ) : animals.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="p-8 text-center text-muted-foreground border rounded-xl border-dashed">
           No animals found.
         </div>
       ) : (
         <div className="space-y-2 pb-28">
-          {animals.map(animal => {
+          {sorted.map(animal => {
             const isSelected = selected.has(animal.id);
 
             if (selectMode) {
