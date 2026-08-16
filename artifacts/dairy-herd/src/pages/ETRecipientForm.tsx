@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Calendar } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { format, addDays, parseISO } from 'date-fns';
 
@@ -132,8 +133,8 @@ export function ETRecipientForm() {
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Recipient Animal</h3>
 
-                <FormItem>
-                  <FormLabel>Select from Herd (optional)</FormLabel>
+                <div className="space-y-2">
+                  <Label>Select from Herd (optional)</Label>
                   <select
                     value={form.watch('animalId') ?? ''}
                     onChange={e => handleAnimalSelect(e.target.value)}
@@ -146,7 +147,7 @@ export function ETRecipientForm() {
                       </option>
                     ))}
                   </select>
-                </FormItem>
+                </div>
 
                 <FormField control={form.control} name="animalIdentifier" render={({ field }) => (
                   <FormItem>
@@ -173,8 +174,8 @@ export function ETRecipientForm() {
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Embryo</h3>
 
-                <FormItem>
-                  <FormLabel>Select Embryo Lot (optional)</FormLabel>
+                <div className="space-y-2">
+                  <Label>Select Embryo Lot (optional)</Label>
                   <select
                     value={form.watch('embryoId') ?? ''}
                     onChange={e => handleEmbryoSelect(e.target.value)}
@@ -187,7 +188,7 @@ export function ETRecipientForm() {
                       </option>
                     ))}
                   </select>
-                </FormItem>
+                </div>
 
                 <FormField control={form.control} name="embryoIdentifier" render={({ field }) => (
                   <FormItem>
