@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import { useLocation, useRoute, Link } from 'wouter';
 import { db, type DrugRoute } from '@/db';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,9 @@ const ROUTES: DrugRoute[] = ['IM', 'SQ', 'IV', 'Oral', 'Intramammary', 'Topical'
 const COMMON_UNITS = ['mL', 'cc', 'tablets', 'tubes', 'g', 'oz', 'lb', 'packets', 'boluses', 'doses'];
 
 export function DrugForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/pharmacy" />;
+
   const [, setLocation] = useLocation();
   const [matchEdit, params] = useRoute('/pharmacy/:id/edit');
   const isEdit = matchEdit && params?.id !== 'new';

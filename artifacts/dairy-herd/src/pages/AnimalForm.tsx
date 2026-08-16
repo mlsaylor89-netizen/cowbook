@@ -13,6 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, addDays, parseISO } from 'date-fns';
 import { deriveStatus } from '@/db/computed';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +71,9 @@ function inferDisposition(status: string): 'Active' | 'Sold' | 'Dead' {
 }
 
 export function AnimalForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/herd" />;
+
   const [, setLocation] = useLocation();
   const [matchEdit, params] = useRoute('/herd/:id/edit');
   const isEdit = !!matchEdit;

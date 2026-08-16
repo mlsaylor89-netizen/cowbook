@@ -147,7 +147,7 @@ export function HerdList() {
               <X className="h-4 w-4 mr-1.5" /> Cancel
             </Button>
           )}
-          {!selectMode && (
+          {!selectMode && !isViewer && (
             <Link href="/herd/new">
               <Button size="sm" className="hidden sm:flex">
                 <Plus className="h-4 w-4 mr-2" /> Add Animal

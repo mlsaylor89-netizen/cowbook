@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import { useLocation, Link } from 'wouter';
 import { db } from '@/db';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
 
 export function EmbryoDonorForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/embryo" />;
+
   const [, setLocation] = useLocation();
   const [saving, setSaving] = useState(false);
 

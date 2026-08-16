@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import { useLocation, Link } from 'wouter';
 import { db } from '@/db';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,9 @@ function fmtPct(n: number | null) {
 // ── component ─────────────────────────────────────────────────────────────
 
 export function FlushForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/flush" />;
+
   const [, setLocation] = useLocation();
   const [saving, setSaving] = useState(false);
 

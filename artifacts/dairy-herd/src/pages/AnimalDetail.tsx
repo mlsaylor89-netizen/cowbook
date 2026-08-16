@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 /** Safely format an ISO date string — returns fallback if missing or invalid. */
 function fmt(dateStr: string | undefined | null, pattern: string, fallback = '—') {
@@ -26,6 +27,7 @@ import type { ClassificationScore, Treatment } from '@/db';
 export function AnimalDetail() {
   const [match, params] = useRoute('/herd/:id');
   const id = params?.id;
+  const { toast } = useToast();
 
   const data = useLiveQuery(async () => {
     if (!id) return null;
@@ -48,6 +50,14 @@ export function AnimalDetail() {
 
   const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats } = data;
   const dim = getDIM(animal);
+
+  async function deleteEvent(type: 'breeding' | 'calving' | 'heat', eventId: string) {
+    if (!confirm(`Remove this ${type} record? This cannot be undone.`)) return;
+    if (type === 'breeding') await db.breedings.delete(eventId);
+    else if (type === 'calving') await db.calvings.delete(eventId);
+    else await db.heats.delete(eventId);
+    toast({ title: `${type.charAt(0).toUpperCase() + type.slice(1)} record removed` });
+  }
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto pb-20">
@@ -203,10 +213,14 @@ export function AnimalDetail() {
                   <Card key={`b-${b.id}`}>
                     <CardContent className="p-3 flex items-start gap-3">
                       <Heart className="h-5 w-5 mt-0.5 text-destructive shrink-0" />
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-bold">{b.breedingType} Breeding</p>
                         <p className="text-sm text-muted-foreground">{fmt(b.date, 'MMM d, yyyy')} · Bull: {b.bullId || 'Unknown'}</p>
                       </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
+                        onClick={() => deleteEvent('breeding', b.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </CardContent>
                   </Card>
                 );
@@ -217,10 +231,14 @@ export function AnimalDetail() {
                   <Card key={`c-${c.id}`}>
                     <CardContent className="p-3 flex items-start gap-3">
                       <Baby className="h-5 w-5 mt-0.5 text-primary shrink-0" />
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-bold">Calved ({c.calfSex})</p>
                         <p className="text-sm text-muted-foreground">{fmt(c.calvingDate, 'MMM d, yyyy')}</p>
                       </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
+                        onClick={() => deleteEvent('calving', c.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </CardContent>
                   </Card>
                 );
@@ -233,7 +251,7 @@ export function AnimalDetail() {
                 <Card key={`h-${h.id}`}>
                   <CardContent className="p-3 flex items-start gap-3">
                     <Thermometer className="h-5 w-5 mt-0.5 text-rose-500 shrink-0" />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="font-bold">Heat Observed — {h.breedingType === 'sexed' ? 'Sexed' : 'Conventional'}</p>
                       <p className="text-sm text-muted-foreground">
                         {fmt(h.observedAt, 'MMM d, yyyy h:mm a')}
@@ -241,6 +259,10 @@ export function AnimalDetail() {
                       </p>
                       <span className={`text-xs font-semibold ${statusColor}`}>{statusLabel}</span>
                     </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
+                      onClick={() => deleteEvent('heat', h.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </CardContent>
                 </Card>
               );

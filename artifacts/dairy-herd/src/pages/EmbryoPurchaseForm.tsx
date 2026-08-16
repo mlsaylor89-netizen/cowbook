@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import { useLocation, useRoute, Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
@@ -12,6 +14,9 @@ import { format } from 'date-fns';
 const GRADES = ['1', '2', '3', '4'];
 
 export function EmbryoPurchaseForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/embryo" />;
+
   const [, params] = useRoute('/embryo/:id/purchase');
   const embryoId = params?.id ?? '';
   const [, setLocation] = useLocation();

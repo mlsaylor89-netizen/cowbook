@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import { useLocation, useRoute, Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
@@ -10,6 +12,9 @@ import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function SemenPurchaseForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/semen" />;
+
   const [, params] = useRoute('/semen/:id/purchase');
   const bullId = params?.id ?? '';
   const [, setLocation] = useLocation();

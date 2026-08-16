@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,6 +28,9 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function ClassificationForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/herd" />;
+
   const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const initialAnimalId = searchParams.get('animalId') || '';

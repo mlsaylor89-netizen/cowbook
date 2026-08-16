@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'wouter';
 import { Home, List, Heart, FlaskConical, Menu, Plus, Thermometer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/useAuth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,8 @@ import {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
+  const { userDoc } = useAuth();
+  const isViewer = userDoc?.role === 'viewer';
 
   const isPrint = location === '/print-report';
 
@@ -32,11 +35,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SidebarItem href="/semen" icon={FlaskConical} label="Semen Inventory" active={location.startsWith('/semen')} />
           <SidebarItem href="/more" icon={Menu} label="More" active={location.startsWith('/more')} />
         </nav>
-        <div className="p-4 border-t">
-          <Button onClick={() => setLocation('/herd/new')} className="w-full h-12 font-bold" size="lg">
-            <Plus className="mr-2 h-5 w-5" /> Add Animal
-          </Button>
-        </div>
+        {!isViewer && (
+          <div className="p-4 border-t">
+            <Button onClick={() => setLocation('/herd/new')} className="w-full h-12 font-bold" size="lg">
+              <Plus className="mr-2 h-5 w-5" /> Add Animal
+            </Button>
+          </div>
+        )}
       </aside>
 
       {/* Main Content Area */}
@@ -63,7 +68,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/breeding')}>Record Breeding</DropdownMenuItem>
             <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/heat')}>Record Heat</DropdownMenuItem>
             <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/treatment')}>Record Treatment</DropdownMenuItem>
-            <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/herd/new')}>Add Animal</DropdownMenuItem>
+            {!isViewer && (
+              <DropdownMenuItem className="h-12 text-base" onClick={() => setLocation('/herd/new')}>Add Animal</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { usePermissions } from '@/lib/permissions';
+import { ViewerBlock } from '@/components/ViewerBlock';
 import { useLocation, useRoute, Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
@@ -9,6 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
 
 export function SemenBullForm() {
+  const { isViewer } = usePermissions();
+  if (isViewer) return <ViewerBlock backHref="/semen" />;
+
   const [, setLocation] = useLocation();
   const [saving, setSaving] = useState(false);
 
