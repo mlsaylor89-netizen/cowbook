@@ -51,7 +51,7 @@ export function EmbryoInventory() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {data.map(({ embryo, inventory, isLow }) => (
+          {data.map(({ embryo, inventory, isLow, grades }) => (
             <div
               key={embryo.id}
               className="cursor-pointer active-elevate hover-elevate"
