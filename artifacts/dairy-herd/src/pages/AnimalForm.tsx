@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const formSchema = z.object({
-  number: z.string().min(1, 'Number is required'),
+  number: z.string().optional().default(''),
   name: z.string().min(1, 'Reg. name is required'),
   barnName: z.string().optional(),
   breed: z.string().min(1, 'Breed is required'),
@@ -270,7 +270,7 @@ export function AnimalForm() {
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="number" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Number / Tag</FormLabel>
+                    <FormLabel>Number / Tag <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
                     <FormControl><Input className="h-12" placeholder="e.g. 101" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
