@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useLocation, Link } from 'wouter';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,22 +26,17 @@ export function FlushForm() {
   const [, setLocation] = useLocation();
   const [saving, setSaving] = useState(false);
 
-  const animals = useLiveQuery(() =>
-    db.animals
-      .filter(a => a.status === 'Active')
-      .sortBy('barnName')
-  );
-
   const [form, setForm] = useState({
-    animalId: '',
+    donorCowName: '',
+    sireName: '',
     flushDate: format(new Date(), 'yyyy-MM-dd'),
     flushType: '' as '' | 'conventional' | 'ivf',
-    sireName: '',
     grade1Count: '',
     grade2Count: '',
     grade3Count: '',
     unfertilizedCount: '',
     oocyteCount: '',
+    numberFrozen: '',
     notes: '',
   });
 
@@ -56,6 +50,7 @@ export function FlushForm() {
   const g2 = parseInt(form.grade2Count) || 0;
   const g3 = parseInt(form.grade3Count) || 0;
   const fertilized = g1 + g2 + g3;
+  const frozen = parseInt(form.numberFrozen) || 0;
 
   const isConventional = form.flushType === 'conventional';
   const isIVF = form.flushType === 'ivf';
@@ -63,7 +58,6 @@ export function FlushForm() {
   const unfert = parseInt(form.unfertilizedCount) || 0;
   const oocytes = parseInt(form.oocyteCount) || 0;
 
-  // % fertilized denominator differs by type
   const denominator = isConventional ? fertilized + unfert : oocytes;
   const pctFert = fmtPct(pct(fertilized, denominator));
   const pctG1 = fmtPct(pct(g1, fertilized));
@@ -78,13 +72,16 @@ export function FlushForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.animalId || !form.flushType) return;
+    if (!form.donorCowName.trim() || !form.flushType) return;
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      const donorName = form.donorCowName.trim();
+
+      // Save flush record
       await db.flushRecords.add({
         id: self.crypto.randomUUID(),
-        animalId: form.animalId,
+        donorCowName: donorName,
         flushDate: form.flushDate,
         flushType: form.flushType,
         sireName: form.sireName.trim() || undefined,
@@ -93,17 +90,67 @@ export function FlushForm() {
         grade3Count: g3 || undefined,
         unfertilizedCount: isConventional ? (unfert || undefined) : undefined,
         oocyteCount: isIVF ? (oocytes || undefined) : undefined,
+        numberFrozen: frozen || undefined,
         notes: form.notes.trim() || undefined,
         createdAt: now,
         updatedAt: now,
       });
+
+      // If embryos were frozen, update embryo inventory
+      if (frozen > 0) {
+        const sireName = form.sireName.trim() || undefined;
+
+        // Find an existing embryo lot for this donor (case-insensitive match)
+        const allEmbryos = await db.embryos.toArray();
+        const existingLot = allEmbryos.find(
+          e => e.donorName.toLowerCase() === donorName.toLowerCase()
+        );
+
+        let embryoId: string;
+        if (existingLot) {
+          embryoId = existingLot.id;
+        } else {
+          // Create a new lot
+          embryoId = self.crypto.randomUUID();
+          await db.embryos.add({
+            id: embryoId,
+            donorName,
+            sireName,
+            breed: '',
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+
+        // Build grade breakdown from flush grades (proportional to frozen count isn't
+        // tracked here — we record what the user entered and use frozen as the unit count)
+        const gradeBreakdown = [
+          { grade: '1', count: g1 },
+          { grade: '2', count: g2 },
+          { grade: '3', count: g3 },
+        ].filter(g => g.count > 0);
+
+        await db.embryoPurchases.add({
+          id: self.crypto.randomUUID(),
+          embryoId,
+          purchaseDate: form.flushDate,
+          unitsCount: frozen,
+          pricePerUnit: 0,
+          totalCost: 0,
+          gradeBreakdown: gradeBreakdown.length > 0 ? gradeBreakdown : undefined,
+          notes: `From flush on ${format(new Date(form.flushDate), 'MMM d, yyyy')}`,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
       setLocation('/flush');
     } finally {
       setSaving(false);
     }
   }
 
-  const canSubmit = !!form.animalId && !!form.flushType;
+  const canSubmit = !!form.donorCowName.trim() && !!form.flushType;
 
   return (
     <div className="max-w-lg mx-auto pb-20">
@@ -118,26 +165,30 @@ export function FlushForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* Animal */}
+        {/* Donor Cow — free text */}
         <div className="space-y-1.5">
-          <Label htmlFor="animalId">Donor Cow *</Label>
-          <select
-            id="animalId"
-            value={form.animalId}
-            onChange={e => set('animalId', e.target.value)}
+          <Label htmlFor="donorCowName">Donor Cow *</Label>
+          <Input
+            id="donorCowName"
+            value={form.donorCowName}
+            onChange={e => set('donorCowName', e.target.value)}
+            placeholder="e.g. Ella 412"
             required
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">Select a cow…</option>
-            {(animals ?? []).map(a => (
-              <option key={a.id} value={a.id}>
-                {a.barnName ? `${a.barnName} — ${a.name}` : a.name}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
-        {/* Date */}
+        {/* Sire — above flush date */}
+        <div className="space-y-1.5">
+          <Label htmlFor="sireName">Mating Sire</Label>
+          <Input
+            id="sireName"
+            value={form.sireName}
+            onChange={e => set('sireName', e.target.value)}
+            placeholder="Bull name or NAAB code"
+          />
+        </div>
+
+        {/* Flush Date */}
         <div className="space-y-1.5">
           <Label htmlFor="flushDate">Flush Date *</Label>
           <Input
@@ -183,17 +234,6 @@ export function FlushForm() {
         {/* Type-specific fields */}
         {form.flushType && (
           <>
-            {/* Sire */}
-            <div className="space-y-1.5">
-              <Label htmlFor="sireName">Sire of Mating</Label>
-              <Input
-                id="sireName"
-                value={form.sireName}
-                onChange={e => set('sireName', e.target.value)}
-                placeholder="Bull name or NAAB code"
-              />
-            </div>
-
             {/* IVF: oocyte count */}
             {isIVF && (
               <div className="space-y-1.5">
@@ -225,6 +265,25 @@ export function FlushForm() {
               </div>
             </div>
 
+            {/* Number frozen */}
+            <div className="space-y-1.5">
+              <Label htmlFor="numberFrozen">Number Frozen</Label>
+              <Input
+                id="numberFrozen"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={form.numberFrozen}
+                onChange={e => set('numberFrozen', e.target.value)}
+                placeholder="e.g. 8"
+              />
+              {frozen > 0 && (
+                <p className="text-xs text-teal-700 font-medium">
+                  ✓ {frozen} unit{frozen !== 1 ? 's' : ''} will be added to Embryo Inventory for {form.donorCowName.trim() || 'this donor'}.
+                </p>
+              )}
+            </div>
+
             {/* Live stats preview */}
             {showStats && (
               <div className="rounded-xl border bg-muted/40 p-4 space-y-3">
@@ -233,18 +292,17 @@ export function FlushForm() {
                   <StatRow label={isIVF ? 'Oocytes collected' : 'Total collected'} value={String(denominator)} />
                   <StatRow label="Embryos (fertilized)" value={String(fertilized)} bold />
                   {pctFert && <StatRow label="% Fertilized" value={pctFert} bold />}
+                  {frozen > 0 && <StatRow label="Frozen" value={String(frozen)} />}
                 </div>
                 {fertilized > 0 && (
-                  <>
-                    <div className="border-t pt-3">
-                      <p className="text-xs text-muted-foreground mb-2">Grade breakdown (of fertilized)</p>
-                      <div className="space-y-1.5">
-                        {g1 > 0 && <GradeBar label="Grade 1" count={g1} pct={pctG1} color="bg-green-500" />}
-                        {g2 > 0 && <GradeBar label="Grade 2" count={g2} pct={pctG2} color="bg-yellow-500" />}
-                        {g3 > 0 && <GradeBar label="Grade 3" count={g3} pct={pctG3} color="bg-orange-500" />}
-                      </div>
+                  <div className="border-t pt-3">
+                    <p className="text-xs text-muted-foreground mb-2">Grade breakdown (of fertilized)</p>
+                    <div className="space-y-1.5">
+                      {g1 > 0 && <GradeBar label="Grade 1" count={g1} pct={pctG1} color="bg-green-500" />}
+                      {g2 > 0 && <GradeBar label="Grade 2" count={g2} pct={pctG2} color="bg-yellow-500" />}
+                      {g3 > 0 && <GradeBar label="Grade 3" count={g3} pct={pctG3} color="bg-orange-500" />}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             )}

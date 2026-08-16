@@ -175,7 +175,8 @@ export interface EmbryoPurchase {
 
 export interface FlushRecord {
   id: string;
-  animalId: string;
+  animalId?: string;        // legacy: linked herd animal
+  donorCowName?: string;    // free-text donor name (used for new records)
   flushDate: string;
   flushType: 'conventional' | 'ivf';
   sireName?: string;
@@ -187,6 +188,8 @@ export interface FlushRecord {
   unfertilizedCount?: number;
   // IVF only: total oocytes collected
   oocyteCount?: number;
+  // Frozen embryos added to inventory on save
+  numberFrozen?: number;
   notes?: string;
   createdAt: string;
   updatedAt: string;

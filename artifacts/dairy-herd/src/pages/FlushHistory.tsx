@@ -58,7 +58,13 @@ export function FlushHistory() {
     const records = await db.flushRecords.orderBy('flushDate').reverse().toArray();
     const animals = await db.animals.toArray();
     const animalMap = new Map(animals.map(a => [a.id, a]));
-    return records.map(r => ({ record: r, animal: animalMap.get(r.animalId) }));
+    return records.map(r => {
+      // Use free-text donor name if available (new records), fall back to herd lookup (legacy)
+      const donorLabel = r.donorCowName
+        ?? (() => { const a = r.animalId ? animalMap.get(r.animalId) : undefined; return a?.barnName || a?.name; })()
+        ?? 'Unknown donor';
+      return { record: r, donorLabel };
+    });
   });
 
   async function deleteRecord(id: string) {
@@ -89,7 +95,7 @@ export function FlushHistory() {
         </div>
       ) : (
         <div className="space-y-3">
-          {data.map(({ record: r, animal }) => {
+          {data.map(({ record: r, donorLabel }) => {
             const s = getStats(r);
             const isIVF = r.flushType === 'ivf';
             return (
@@ -98,9 +104,7 @@ export function FlushHistory() {
                   {/* Header row */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-bold text-lg truncate">
-                        {animal?.barnName || animal?.name || 'Unknown animal'}
-                      </p>
+                      <p className="font-bold text-lg truncate">{donorLabel}</p>
                       <p className="text-sm text-muted-foreground">
                         {format(parseISO(r.flushDate), 'MMM d, yyyy')}
                       </p>
