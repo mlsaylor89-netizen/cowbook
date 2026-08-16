@@ -255,7 +255,7 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
       .where('status')
       .noneOf(['Sold', 'Dead'])
       .toArray()
-      .then(a => a.sort((x, y) => x.number.localeCompare(y.number, undefined, { numeric: true }))),
+      .then(a => a.sort((x, y) => (x.barnName || x.name).localeCompare(y.barnName || y.name))),
   );
 
   const filtered = useMemo(() => {

@@ -31,7 +31,7 @@ export function PregCheckForm() {
   const initialAnimalId = searchParams.get('animalId') || '';
 
   const data = useLiveQuery(async () => {
-    const animals = await db.animals.toArray();
+    const animals = (await db.animals.toArray()).sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name));
     const settings = await db.settings.get('default');
 
     // Pre-load breedings for the initial animal so we can set a default breedingId

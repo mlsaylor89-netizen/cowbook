@@ -38,7 +38,7 @@ export function TreatmentForm() {
   const initialAnimalId = searchParams.get('animalId') || '';
 
   const { animals, drugs } = useLiveQuery(async () => ({
-    animals: await db.animals.toArray(),
+    animals: (await db.animals.toArray()).sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name)),
     drugs: (await db.drugProducts.toArray()).sort((a, b) => a.name.localeCompare(b.name)),
   })) ?? { animals: [], drugs: [] };
 

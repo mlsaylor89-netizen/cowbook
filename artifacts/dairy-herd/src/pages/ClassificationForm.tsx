@@ -33,7 +33,7 @@ export function ClassificationForm() {
 
   const animals = useLiveQuery(async () => {
     const all = await db.animals.toArray();
-    return all.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+    return all.sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name));
   }) ?? [];
 
   const form = useForm<FormValues>({

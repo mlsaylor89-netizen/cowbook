@@ -28,7 +28,9 @@ export function CalvingForm() {
   const searchParams = new URLSearchParams(window.location.search);
   const initialAnimalId = searchParams.get('animalId') || '';
 
-  const animals = useLiveQuery(() => db.animals.toArray()) ?? [];
+  const animals = useLiveQuery(() =>
+    db.animals.toArray().then(a => a.sort((x, y) => (x.barnName || x.name).localeCompare(y.barnName || y.name)))
+  ) ?? [];
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

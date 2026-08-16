@@ -108,14 +108,15 @@ export function getPregCheckList(animals: Animal[], breedings: Breeding[], pregC
       .filter(b => b.animalId === a.id)
       .sort((x, y) => parseISO(y.date).getTime() - parseISO(x.date).getTime())[0];
     return { animal: a, breeding: lastBreeding, daysSinceBreeding: differenceInDays(now, parseISO(lastBreeding.date)) };
-  });
+  }).sort((a, b) => (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name));
 }
 
 export function getFreshCowList(animals: Animal[], settings: Settings) {
   return animals.filter(a => {
     const dim = getDIM(a);
     return dim !== null && dim >= 0 && dim <= settings.freshCowWindowDays;
-  }).map(a => ({ animal: a, dim: getDIM(a)! }));
+  }).map(a => ({ animal: a, dim: getDIM(a)! }))
+    .sort((a, b) => (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name));
 }
 
 export function getBreedingAttentionList(animals: Animal[], breedings: Breeding[], settings: Settings) {
@@ -139,7 +140,7 @@ export function getBreedingAttentionList(animals: Animal[], breedings: Breeding[
       lastBreedingDate: lastBreeding?.date,
       servicesThisLactation: animalBreedings.length
     };
-  });
+  }).sort((a, b) => (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name));
 }
 
 export function getDryOffList(animals: Animal[], settings: Settings) {
@@ -154,7 +155,7 @@ export function getDryOffList(animals: Animal[], settings: Settings) {
   }).map(a => ({
     animal: a,
     daysUntilDryOff: differenceInDays(parseISO(a.expectedDryOffDate!), now)
-  }));
+  })).sort((a, b) => (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name));
 }
 
 export function getUpcomingCalvings(animals: Animal[]) {
@@ -183,9 +184,15 @@ export function getTreatmentFollowUp(treatments: Treatment[], animals: Animal[])
   const activeTreatments = treatments.filter(t => !t.resolved);
   const withholding = treatments.filter(t => t.milkWithholdUntil && isAfter(parseISO(t.milkWithholdUntil), now));
 
+  const byName = (a: Animal | undefined, b: Animal | undefined) =>
+    (a?.barnName || a?.name || '').localeCompare(b?.barnName || b?.name || '');
   return {
-    active: activeTreatments.map(t => ({ treatment: t, animal: animals.find(a => a.id === t.animalId) })),
-    withholding: withholding.map(t => ({ treatment: t, animal: animals.find(a => a.id === t.animalId) }))
+    active: activeTreatments
+      .map(t => ({ treatment: t, animal: animals.find(a => a.id === t.animalId) }))
+      .sort((a, b) => byName(a.animal, b.animal)),
+    withholding: withholding
+      .map(t => ({ treatment: t, animal: animals.find(a => a.id === t.animalId) }))
+      .sort((a, b) => byName(a.animal, b.animal)),
   };
 }
 
@@ -216,7 +223,8 @@ export function getWatchForHeatList(animals: Animal[], breedings: Breeding[]) {
         breeding: last,
         daysSinceBreeding: differenceInDays(now, parseISO(last.date)),
       };
-    });
+    })
+    .sort((a, b) => (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name));
 }
 
 export async function processBreeding(data: Omit<Breeding, 'id' | 'createdAt' | 'updatedAt'>) {

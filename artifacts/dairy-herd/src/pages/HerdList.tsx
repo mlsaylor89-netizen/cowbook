@@ -57,7 +57,8 @@ export function HerdList() {
   const isViewer = userDoc?.role === 'viewer';
 
   const animals = useLiveQuery(async () => {
-    let all = await db.animals.toCollection().sortBy('number');
+    let all = await db.animals.toArray();
+    all.sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name));
     if (search.trim()) {
       const s = search.toLowerCase();
       all = all.filter(a =>
