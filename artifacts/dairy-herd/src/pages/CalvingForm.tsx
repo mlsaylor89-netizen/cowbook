@@ -84,20 +84,20 @@ export function CalvingForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Animal</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-12 text-base">
-                          <SelectValue placeholder="Select animal" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
+                    <FormControl>
+                      <select
+                        value={field.value}
+                        onChange={e => field.onChange(e.target.value)}
+                        className="h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="">Select animal…</option>
                         {animals.map(a => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.number} — {a.name}
-                          </SelectItem>
+                          <option key={a.id} value={a.id}>
+                            {a.number} — {a.barnName || a.name}
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </select>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
