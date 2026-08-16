@@ -1,5 +1,5 @@
-import { addDays, differenceInDays, isBefore, isAfter, subDays, isToday, parseISO } from 'date-fns';
-import { db, type Animal, type Breeding, type PregnancyCheck, type Calving, type Treatment, type Settings } from './index';
+import { addDays, differenceInDays, differenceInHours, isBefore, isAfter, subDays, isToday, parseISO } from 'date-fns';
+import { db, type Animal, type Breeding, type PregnancyCheck, type Calving, type Treatment, type Settings, type HeatObservation } from './index';
 
 // ── Status helpers: prefer new split fields, fall back for old records ──────
 
@@ -197,34 +197,92 @@ export function getTreatmentFollowUp(treatments: Treatment[], animals: Animal[])
 }
 
 /**
- * Cows in days 20–22 post-breeding whose reproStatus is still 'Bred'
- * (not yet confirmed pregnant or open) — prime window to watch for return
- * to heat, which would indicate a failed conception.
+ * Animals to watch for heat.
+ * Two sources:
+ *  1. Heat-based: animals with a nextHeatExpectedAt (from a 'pass' or 'et-recipient' heat record)
+ *     within a ±3-day window — timed from the recorded heat, not the breeding.
+ *  2. Breeding-based: cows still in 'Bred' status 20–22 days post-breeding.
+ * Animals already covered by source 1 are not duplicated in source 2.
  */
-export function getWatchForHeatList(animals: Animal[], breedings: Breeding[]) {
+export function getWatchForHeatList(
+  animals: Animal[],
+  breedings: Breeding[],
+  heats: HeatObservation[] = [],
+) {
   const now = new Date();
-  return animals
-    .filter(a => {
-      if (!isActive(a)) return false;
-      if (reproStat(a) !== 'Bred') return false;
-      const last = breedings
-        .filter(b => b.animalId === a.id)
-        .sort((x, y) => parseISO(y.date).getTime() - parseISO(x.date).getTime())[0];
-      if (!last) return false;
-      const days = differenceInDays(now, parseISO(last.date));
-      return days >= 20 && days <= 22;
-    })
-    .map(a => {
-      const last = breedings
-        .filter(b => b.animalId === a.id)
-        .sort((x, y) => parseISO(y.date).getTime() - parseISO(x.date).getTime())[0];
-      return {
+
+  type WatchItem = {
+    animal: Animal;
+    source: 'breeding' | 'heat';
+    breeding?: Breeding;
+    daysSinceBreeding?: number;
+    heat?: HeatObservation;
+    nextHeatExpectedAt?: string;
+    daysUntilNextHeat?: number;
+  };
+
+  const results: WatchItem[] = [];
+  const seenIds = new Set<string>();
+
+  // ── 1. Heat-based (pass or ET recipient) ─────────────────────────────────
+  for (const heat of heats) {
+    if (!heat.nextHeatExpectedAt) continue;
+    if (heat.status === 'bred') continue;
+    const animal = animals.find(a => a.id === heat.animalId);
+    if (!animal || !isActive(animal)) continue;
+    const days = differenceInDays(parseISO(heat.nextHeatExpectedAt), now);
+    if (days >= -3 && days <= 3) {
+      seenIds.add(animal.id);
+      results.push({
+        animal,
+        source: 'heat',
+        heat,
+        nextHeatExpectedAt: heat.nextHeatExpectedAt,
+        daysUntilNextHeat: days,
+      });
+    }
+  }
+
+  // ── 2. Breeding-based: Bred cows 20–22 days post-breeding ────────────────
+  for (const a of animals) {
+    if (seenIds.has(a.id)) continue;
+    if (!isActive(a)) continue;
+    if (reproStat(a) !== 'Bred') continue;
+    const last = breedings
+      .filter(b => b.animalId === a.id)
+      .sort((x, y) => parseISO(y.date).getTime() - parseISO(x.date).getTime())[0];
+    if (!last) continue;
+    const days = differenceInDays(now, parseISO(last.date));
+    if (days >= 20 && days <= 22) {
+      results.push({
         animal: a,
+        source: 'breeding',
         breeding: last,
-        daysSinceBreeding: differenceInDays(now, parseISO(last.date)),
-      };
+        daysSinceBreeding: days,
+      });
+    }
+  }
+
+  return results.sort((a, b) =>
+    (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name),
+  );
+}
+
+/**
+ * Pending embryo-transfer recipients — heat records with heatAction === 'et-recipient'
+ * and status === 'pending', sorted by scheduled transfer time (soonest first).
+ */
+export function getETRecipientList(animals: Animal[], heats: HeatObservation[]) {
+  const now = new Date();
+  return heats
+    .filter(h => h.heatAction === 'et-recipient' && h.status === 'pending' && h.etScheduledAt)
+    .map(h => {
+      const animal = animals.find(a => a.id === h.animalId);
+      const hoursUntilET = differenceInHours(parseISO(h.etScheduledAt!), now);
+      return { animal, heat: h, etScheduledAt: h.etScheduledAt!, hoursUntilET, isOverdue: hoursUntilET < 0 };
     })
-    .sort((a, b) => (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name));
+    .filter((r): r is { animal: Animal; heat: HeatObservation; etScheduledAt: string; hoursUntilET: number; isOverdue: boolean } => !!r.animal)
+    .sort((a, b) => a.etScheduledAt.localeCompare(b.etScheduledAt));
 }
 
 export async function processBreeding(data: Omit<Breeding, 'id' | 'createdAt' | 'updatedAt'>) {

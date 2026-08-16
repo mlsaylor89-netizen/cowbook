@@ -1,10 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import { getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, processPregCheck, getWatchForHeatList } from '@/db/computed';
+import { getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, processPregCheck, getWatchForHeatList, getETRecipientList } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link, useRoute } from 'wouter';
-import { ArrowLeft, Check, X, Calendar, AlertCircle, Thermometer } from 'lucide-react';
+import { ArrowLeft, Check, X, Calendar, AlertCircle, Thermometer, Pipette, Eye } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
 
@@ -14,10 +14,13 @@ export function Checklist() {
 
   const data = useLiveQuery(async () => {
     const animals = await db.animals.toArray();
-    const breedings = await db.breedings.toArray();
-    const pregChecks = await db.pregnancyChecks.toArray();
-    const treatments = await db.treatments.toArray();
-    const settings = await db.settings.get('default');
+    const [breedings, pregChecks, treatments, heats, settings] = await Promise.all([
+      db.breedings.toArray(),
+      db.pregnancyChecks.toArray(),
+      db.treatments.toArray(),
+      db.heats.toArray(),
+      db.settings.get('default'),
+    ]);
     if (!settings) return null;
 
     return {
@@ -28,7 +31,8 @@ export function Checklist() {
       dryOff: getDryOffList(animals, settings),
       calvings: getUpcomingCalvings(animals),
       treatments: getTreatmentFollowUp(treatments, animals),
-      watchHeat: getWatchForHeatList(animals, breedings),
+      watchHeat: getWatchForHeatList(animals, breedings, heats),
+      etRecipients: getETRecipientList(animals, heats),
     };
   });
 
@@ -64,7 +68,7 @@ export function Checklist() {
       break;
     case 'watch-heat':
       title = 'Watch for Heat';
-      content = <WatchHeatList list={data.watchHeat} />;
+      content = <WatchHeatList list={data.watchHeat} etRecipients={data.etRecipients} />;
       break;
     default:
       content = <div>Unknown checklist type.</div>;
@@ -292,39 +296,107 @@ function TreatmentsList({ data }: { data: any }) {
   );
 }
 
-function WatchHeatList({ list }: { list: ReturnType<typeof getWatchForHeatList> }) {
-  if (list.length === 0) {
-    return <EmptyState text="No cows in the days 20–22 watch window right now." />;
+function WatchHeatList({
+  list,
+  etRecipients,
+}: {
+  list: ReturnType<typeof getWatchForHeatList>;
+  etRecipients: ReturnType<typeof getETRecipientList>;
+}) {
+  if (list.length === 0 && etRecipients.length === 0) {
+    return <EmptyState text="No cows in the watch window or pending ET transfers right now." />;
   }
+
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground px-1">
-        These cows were bred 20–22 days ago and may return to heat if conception failed.
-        Watch closely and record a heat if observed.
-      </p>
-      {list.map(({ animal, breeding, daysSinceBreeding }) => (
-        <Card key={animal.id} className="border-rose-300 dark:border-rose-800">
-          <CardContent className="p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Thermometer className="h-4 w-4 text-rose-500 shrink-0" />
-                <Link href={`/herd/${animal.id}`} className="font-bold text-base hover:underline truncate">
-                  {animal.number} {animal.barnName || animal.name}
+    <div className="space-y-4">
+      {/* ── ET Recipients ── */}
+      {etRecipients.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider px-1 text-violet-700 dark:text-violet-300">
+            Pending ET Transfers ({etRecipients.length})
+          </p>
+          {etRecipients.map(({ animal, heat, etScheduledAt, hoursUntilET, isOverdue }) => (
+            <Card key={heat.id} className="border-violet-300 dark:border-violet-700">
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Pipette className="h-4 w-4 text-violet-500 shrink-0" />
+                    <Link href={`/herd/${animal.id}`} className="font-bold text-base hover:underline truncate">
+                      {animal.number} {animal.barnName || animal.name}
+                    </Link>
+                  </div>
+                  <p className="text-sm mt-0.5 ml-6">
+                    <span className={`font-semibold ${isOverdue ? 'text-destructive' : 'text-violet-700 dark:text-violet-300'}`}>
+                      {isOverdue
+                        ? `Overdue ${Math.abs(hoursUntilET)}h ago`
+                        : `Transfer in ${hoursUntilET}h`}
+                    </span>
+                    <span className="text-muted-foreground ml-2">
+                      {format(parseISO(etScheduledAt), 'EEE, MMM d @ h:mm a')}
+                    </span>
+                  </p>
+                </div>
+                <Link href={`/heat?animalId=${animal.id}`} className="shrink-0">
+                  <Button size="sm" variant="outline" className="border-violet-300 text-violet-700 hover:bg-violet-50">
+                    Record Heat
+                  </Button>
                 </Link>
-              </div>
-              <p className="text-sm text-muted-foreground mt-0.5 ml-6">
-                Bred {format(parseISO(breeding.date), 'MMM d')} ·{' '}
-                <span className="font-semibold text-rose-600">Day {daysSinceBreeding} post-breeding</span>
-              </p>
-            </div>
-            <Link href={`/heat?animalId=${animal.id}`} className="shrink-0">
-              <Button size="sm" variant="outline" className="border-rose-300 text-rose-700 hover:bg-rose-50">
-                Record Heat
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ── Watch for Return to Heat ── */}
+      {list.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider px-1 text-rose-600 dark:text-rose-400">
+            Watch for Heat ({list.length})
+          </p>
+          <p className="text-sm text-muted-foreground px-1">
+            Watch closely and record a heat if observed.
+          </p>
+          {list.map(item => (
+            <Card key={item.animal.id} className="border-rose-300 dark:border-rose-800">
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {item.source === 'heat'
+                      ? <Eye className="h-4 w-4 text-amber-500 shrink-0" />
+                      : <Thermometer className="h-4 w-4 text-rose-500 shrink-0" />}
+                    <Link href={`/herd/${item.animal.id}`} className="font-bold text-base hover:underline truncate">
+                      {item.animal.number} {item.animal.barnName || item.animal.name}
+                    </Link>
+                  </div>
+                  {item.source === 'heat' && item.nextHeatExpectedAt ? (
+                    <p className="text-sm text-muted-foreground mt-0.5 ml-6">
+                      Next heat expected{' '}
+                      <span className={`font-semibold ${item.daysUntilNextHeat! < 0 ? 'text-destructive' : 'text-rose-600'}`}>
+                        {item.daysUntilNextHeat === 0
+                          ? 'today'
+                          : item.daysUntilNextHeat! < 0
+                            ? `${Math.abs(item.daysUntilNextHeat!)}d overdue`
+                            : `in ${item.daysUntilNextHeat}d`}
+                      </span>
+                      {' · '}{format(parseISO(item.nextHeatExpectedAt), 'EEE, MMM d @ h:mm a')}
+                    </p>
+                  ) : item.source === 'breeding' && item.breeding ? (
+                    <p className="text-sm text-muted-foreground mt-0.5 ml-6">
+                      Bred {format(parseISO(item.breeding.date), 'MMM d')} ·{' '}
+                      <span className="font-semibold text-rose-600">Day {item.daysSinceBreeding} post-breeding</span>
+                    </p>
+                  ) : null}
+                </div>
+                <Link href={`/heat?animalId=${item.animal.id}`} className="shrink-0">
+                  <Button size="sm" variant="outline" className="border-rose-300 text-rose-700 hover:bg-rose-50">
+                    Record Heat
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

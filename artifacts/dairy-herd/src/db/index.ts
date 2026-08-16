@@ -238,10 +238,13 @@ export interface HeatObservation {
   id: string;
   animalId: string;
   farmId: string;
-  observedAt: string;        // ISO — when heat was seen
+  observedAt: string;           // ISO — when heat was seen
+  heatAction?: 'breed' | 'et-recipient' | 'pass';  // what to do with this heat
   breedingType: 'conventional' | 'sexed';
-  scheduledBreedAt: string;  // observedAt + 12 h (conventional) or + 30 h (sexed)
-  alertAt: string;           // scheduledBreedAt − 1 h
+  scheduledBreedAt: string;     // breed: observedAt+12/30h | et: observedAt+168h | pass: observedAt
+  alertAt: string;              // scheduledBreedAt − 1 h
+  etScheduledAt?: string;       // et-recipient: observedAt + 168 h (exact ISO)
+  nextHeatExpectedAt?: string;  // pass & et-recipient: observedAt + 504 h (21 days)
   status: 'pending' | 'bred' | 'missed';
   notes?: string;
   createdAt: string;

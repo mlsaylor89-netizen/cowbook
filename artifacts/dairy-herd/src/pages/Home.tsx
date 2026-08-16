@@ -26,14 +26,14 @@ export function Home() {
   }, []);
 
   const data = useLiveQuery(async () => {
-    // Fetch all six collections in parallel rather than sequentially.
-    const [animals, breedings, pregChecks, treatments, settings, drugs] = await Promise.all([
+    const [animals, breedings, pregChecks, treatments, settings, drugs, heats] = await Promise.all([
       db.animals.toArray(),
       db.breedings.toArray(),
       db.pregnancyChecks.toArray(),
       db.treatments.toArray(),
       db.settings.get('default'),
       db.drugProducts.toArray(),
+      db.heats.toArray(),
     ]);
 
     if (!settings) return null;
@@ -55,7 +55,7 @@ export function Home() {
       dryOff: getDryOffList(animals, settings),
       calvings: getUpcomingCalvings(animals),
       treatments: getTreatmentFollowUp(treatments, animals),
-      watchHeat: getWatchForHeatList(animals, breedings),
+      watchHeat: getWatchForHeatList(animals, breedings, heats),
       lowDrugs,
     };
   });
@@ -192,7 +192,7 @@ export function Home() {
           <ChecklistCard
             title="Watch for Heat"
             count={data.watchHeat.length}
-            subtitle={data.watchHeat.length > 0 ? 'Days 20–22 post-breeding' : undefined}
+            subtitle={data.watchHeat.length > 0 ? `${data.watchHeat.filter(w => w.source === 'heat').length ? 'Heat-timed · ' : ''}Days 20–22 post-breeding` : undefined}
             icon={<Thermometer className="h-5 w-5 text-rose-500" />}
             href="/checklist/watch-heat"
             alert={data.watchHeat.length > 0}
