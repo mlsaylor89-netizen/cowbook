@@ -139,6 +139,8 @@ export interface SemenPurchase {
   unitsCount: number;
   pricePerUnit: number;
   totalCost: number;
+  tankNumber?: string;
+  canisterNumber?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;

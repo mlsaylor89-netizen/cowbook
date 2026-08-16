@@ -21,6 +21,8 @@ export function SemenPurchaseForm() {
     purchaseDate: format(new Date(), 'yyyy-MM-dd'),
     unitsCount: '',
     pricePerUnit: '',
+    tankNumber: '',
+    canisterNumber: '',
     notes: '',
   });
 
@@ -45,6 +47,8 @@ export function SemenPurchaseForm() {
         unitsCount: units,
         pricePerUnit: price,
         totalCost: parseFloat(total.toFixed(2)),
+        tankNumber: form.tankNumber.trim() || undefined,
+        canisterNumber: form.canisterNumber.trim() || undefined,
         notes: form.notes.trim() || undefined,
         createdAt: now,
         updatedAt: now,
@@ -118,6 +122,31 @@ export function SemenPurchaseForm() {
             <span className="font-bold">${total.toFixed(2)}</span>
           </div>
         )}
+
+        {/* Storage location */}
+        <div className="rounded-lg border p-4 space-y-4">
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Storage Location</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="tankNumber">Tank #</Label>
+              <Input
+                id="tankNumber"
+                value={form.tankNumber}
+                onChange={e => set('tankNumber', e.target.value)}
+                placeholder="e.g. 1"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="canisterNumber">Canister #</Label>
+              <Input
+                id="canisterNumber"
+                value={form.canisterNumber}
+                onChange={e => set('canisterNumber', e.target.value)}
+                placeholder="e.g. 3"
+              />
+            </div>
+          </div>
+        </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="notes">Notes</Label>

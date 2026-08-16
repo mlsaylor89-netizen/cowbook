@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { useLocation } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, AlertTriangle, Search, FlaskConical } from 'lucide-react';
 
 export function SemenInventory() {
   const [, navigate] = useLocation();
+  const [search, setSearch] = useState('');
 
   const data = useLiveQuery(async () => {
     const bulls = await db.semenBulls.toArray();
@@ -19,8 +22,39 @@ export function SemenInventory() {
       const totalBought = bullPurchases.reduce((sum, p) => sum + p.unitsCount, 0);
       const totalUsed = breedings.filter(b => b.bullId === bull.id).length;
       const inventory = totalBought - totalUsed;
-      return { bull, inventory, isLow: inventory <= (settings?.lowSemenThreshold || 2) };
+
+      // Collect unique tank/canister location strings for quick display
+      const locations = Array.from(
+        new Set(
+          bullPurchases
+            .filter(p => p.tankNumber || p.canisterNumber)
+            .map(p => {
+              const parts: string[] = [];
+              if (p.tankNumber) parts.push(`Tank ${p.tankNumber}`);
+              if (p.canisterNumber) parts.push(`Can. ${p.canisterNumber}`);
+              return parts.join(' / ');
+            })
+        )
+      );
+
+      return {
+        bull,
+        inventory,
+        locations,
+        isLow: inventory <= (settings?.lowSemenThreshold || 2),
+      };
     });
+  });
+
+  const filtered = data?.filter(({ bull }) => {
+    if (!search.trim()) return true;
+    const s = search.toLowerCase();
+    return (
+      bull.name.toLowerCase().includes(s) ||
+      (bull.naabCode && bull.naabCode.toLowerCase().includes(s)) ||
+      (bull.breed && bull.breed.toLowerCase().includes(s)) ||
+      (bull.studCompany && bull.studCompany.toLowerCase().includes(s))
+    );
   });
 
   return (
@@ -32,15 +66,26 @@ export function SemenInventory() {
         </Button>
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+        <Input
+          placeholder="Search bull, NAAB code, breed, stud..."
+          className="pl-10 h-12 text-lg bg-card"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
       {data === undefined ? (
         <div className="p-4 text-center">Loading...</div>
-      ) : data.length === 0 ? (
+      ) : filtered!.length === 0 ? (
         <div className="p-8 text-center text-muted-foreground border rounded-xl border-dashed">
-          No semen inventory recorded.
+          {search.trim() ? 'No bulls match your search.' : 'No semen inventory recorded.'}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {data.map(({ bull, inventory, isLow }) => (
+          {filtered!.map(({ bull, inventory, locations, isLow }) => (
             <div
               key={bull.id}
               className="cursor-pointer active-elevate hover-elevate"
@@ -50,7 +95,15 @@ export function SemenInventory() {
                 <CardContent className="p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-lg truncate">{bull.name}</p>
-                    <p className="text-sm text-muted-foreground truncate">{bull.studCompany}</p>
+                    <p className="text-sm text-muted-foreground truncate">{bull.studCompany || bull.breed}</p>
+                    {locations.length > 0 && (
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        <FlaskConical className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <p className="text-xs text-muted-foreground truncate">
+                          {locations.join(' · ')}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="text-right">

@@ -106,20 +106,29 @@ export function SemenDetail() {
           <p className="text-muted-foreground text-sm">No purchases recorded.</p>
         ) : (
           <div className="space-y-2">
-            {purchases.map(p => (
-              <Card key={p.id}>
-                <CardContent className="p-3 flex justify-between items-center">
-                  <div>
-                    <p className="font-bold">{format(parseISO(p.purchaseDate), 'MMM d, yyyy')}</p>
-                    <p className="text-sm text-muted-foreground">${p.pricePerUnit}/unit</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg">+{p.unitsCount}</p>
-                    <p className="text-sm text-muted-foreground">${p.totalCost}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {purchases.map(p => {
+              const location = [
+                p.tankNumber ? `Tank ${p.tankNumber}` : '',
+                p.canisterNumber ? `Can. ${p.canisterNumber}` : '',
+              ].filter(Boolean).join(' / ');
+              return (
+                <Card key={p.id}>
+                  <CardContent className="p-3 flex justify-between items-center">
+                    <div>
+                      <p className="font-bold">{format(parseISO(p.purchaseDate), 'MMM d, yyyy')}</p>
+                      <p className="text-sm text-muted-foreground">${p.pricePerUnit}/unit</p>
+                      {location && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{location}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg">+{p.unitsCount}</p>
+                      <p className="text-sm text-muted-foreground">${p.totalCost}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
