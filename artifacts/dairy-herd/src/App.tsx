@@ -43,6 +43,8 @@ import { RecordHeat } from '@/pages/RecordHeat';
 import { SyncProtocol } from '@/pages/SyncProtocol';
 import { FlushHistory } from '@/pages/FlushHistory';
 import { FlushForm } from '@/pages/FlushForm';
+import { ETRecipientList } from '@/pages/ETRecipientList';
+import { ETRecipientForm } from '@/pages/ETRecipientForm';
 
 // Firebase auth + sync
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -149,6 +151,9 @@ function Router() {
           <Route path="/sync-protocol" component={SyncProtocol} />
           <Route path="/flush" component={FlushHistory} />
           <Route path="/flush/new" component={FlushForm} />
+
+          <Route path="/et-recipients" component={ETRecipientList} />
+          <Route path="/et-recipients/new" component={ETRecipientForm} />
 
           <Route path="/more" component={MoreMenu} />
           <Route path="/reports" component={Reports} />

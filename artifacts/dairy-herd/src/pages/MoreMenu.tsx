@@ -17,6 +17,7 @@ import {
   Thermometer,
   CalendarDays,
   Microscope,
+  Pipette,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 
@@ -36,6 +37,7 @@ export function MoreMenu() {
         <MenuLink href="/semen" icon={<Dna className="h-5 w-5 text-cyan-600" />} title="Semen Inventory" />
         <MenuLink href="/embryo" icon={<FlaskConical className="h-5 w-5 text-violet-600" />} title="Embryo Inventory" />
         <MenuLink href="/flush" icon={<Microscope className="h-5 w-5 text-teal-600" />} title="Flush History" />
+        <MenuLink href="/et-recipients" icon={<Pipette className="h-5 w-5 text-violet-500" />} title="ET Recipients" />
         <MenuLink href="/pharmacy" icon={<Pill className="h-5 w-5 text-emerald-600" />} title="Pharmacy" />
         <MenuLink href="/print-report" icon={<Printer className="h-5 w-5 text-gray-600" />} title="Print Daily Worksheet" />
       </div>

@@ -282,6 +282,21 @@ export interface HeatObservation {
   updatedAt: string;
 }
 
+export interface ETRecipientRecord {
+  id: string;
+  farmId: string;
+  animalId?: string;          // link to existing animal in DB
+  animalIdentifier: string;   // tag / ID displayed on card
+  location?: string;          // pen, barn, pasture
+  embryoId?: string;          // link to embryo lot
+  embryoIdentifier?: string;  // free-text embryo ID
+  transferDate?: string;
+  status: 'pending' | 'transferred' | 'pregnant' | 'failed';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class DairyHerdDB extends Dexie {
   animals!: Table<Animal, string>;
   breedings!: Table<Breeding, string>;
@@ -300,6 +315,7 @@ export class DairyHerdDB extends Dexie {
   syncProtocolBatches!: Table<SyncProtocolBatch, string>;
   syncEvents!: Table<SyncEvent, string>;
   flushRecords!: Table<FlushRecord, string>;
+  etRecipients!: Table<ETRecipientRecord, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -346,6 +362,10 @@ export class DairyHerdDB extends Dexie {
     // v10: flush / IVF records
     this.version(10).stores({
       flushRecords: 'id, animalId, flushDate',
+    });
+    // v11: ET recipient tracking
+    this.version(11).stores({
+      etRecipients: 'id, farmId, animalId, status, transferDate',
     });
   }
 }
