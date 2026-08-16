@@ -74,14 +74,20 @@ export function RecordHeat() {
     );
   }, [animals, animalSearch]);
 
+  // Load breeding timing from settings (fall back to defaults if not yet saved)
+  const settings = useLiveQuery(() => db.settings.get('default'));
+  const conventionalHours = settings?.conventionalBreedingHours ?? 12;
+  const sexedHours        = settings?.sexedBreedingHours        ?? 30;
+  const etHours           = settings?.embryoTransferHours       ?? 168;
+
   // Computed times — all derived from the observed heat datetime
   const observedDt = useMemo(() => safeParse(observedAt), [observedAt]);
 
-  const hoursToBreed = breedingType === 'sexed' ? 30 : 12;
+  const hoursToBreed = breedingType === 'sexed' ? sexedHours : conventionalHours;
 
   // All times derived from the observed heat datetime — declared in dependency order
   const scheduledBreedAt   = useMemo(() => addHours(observedDt, hoursToBreed),  [observedDt, hoursToBreed]);
-  const etScheduledAt      = useMemo(() => addHours(observedDt, 168),           [observedDt]); // +7 days exact
+  const etScheduledAt      = useMemo(() => addHours(observedDt, etHours),       [observedDt, etHours]);
   const etAlertAt          = useMemo(() => addHours(etScheduledAt, -1),         [etScheduledAt]);
   // Next heat: exactly 21 days (504 h) from the recorded heat — NOT from breeding time
   const nextHeatExpectedAt = useMemo(() => addHours(observedDt, 504),           [observedDt]);
@@ -382,7 +388,7 @@ export function RecordHeat() {
                     <Pipette className="h-4 w-4 text-violet-600 shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground uppercase font-semibold">
-                        ET Transfer (+168h from heat)
+                        ET Transfer (+{etHours}h from heat)
                       </p>
                       <p className="font-bold text-violet-700 dark:text-violet-300">
                         {format(etScheduledAt, 'EEE, MMM d @ h:mm a')}

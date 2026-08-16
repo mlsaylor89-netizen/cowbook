@@ -224,6 +224,10 @@ export interface Settings {
   dryOffWarningDays: number;
   lowSemenThreshold: number;
   gestationDays: number;
+  // Breeding timing (hours after heat observed)
+  conventionalBreedingHours: number;  // default 12
+  sexedBreedingHours: number;          // default 30
+  embryoTransferHours: number;         // default 168
   updatedAt: string;
 }
 

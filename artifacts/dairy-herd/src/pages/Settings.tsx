@@ -36,6 +36,9 @@ const formSchema = z.object({
   dryOffWarningDays: z.coerce.number().min(1).max(30),
   lowSemenThreshold: z.coerce.number().min(0),
   gestationDays: z.coerce.number().min(270).max(295),
+  conventionalBreedingHours: z.coerce.number().min(1).max(72),
+  sexedBreedingHours: z.coerce.number().min(1).max(72),
+  embryoTransferHours: z.coerce.number().min(24).max(240),
 });
 
 export function Settings() {
@@ -52,6 +55,9 @@ export function Settings() {
       dryOffWarningDays: 14,
       lowSemenThreshold: 2,
       gestationDays: 283,
+      conventionalBreedingHours: 12,
+      sexedBreedingHours: 30,
+      embryoTransferHours: 168,
     },
   });
 
@@ -142,6 +148,35 @@ export function Settings() {
                   <FormField control={form.control} name="gestationDays" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Gestation (Days)</FormLabel>
+                      <FormControl><Input className="h-12" type="number" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-bold text-muted-foreground uppercase tracking-wider text-sm">
+                  Breeding Timing (hours after heat observed)
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField control={form.control} name="conventionalBreedingHours" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Conventional AI</FormLabel>
+                      <FormControl><Input className="h-12" type="number" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="sexedBreedingHours" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sexed AI</FormLabel>
+                      <FormControl><Input className="h-12" type="number" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="embryoTransferHours" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ET Transfer</FormLabel>
                       <FormControl><Input className="h-12" type="number" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
