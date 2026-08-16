@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,6 +14,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { processBreeding } from '@/db/computed';
 import { format } from 'date-fns';
 
+const MANUAL_BULL = '__manual__';
+
 const formSchema = z.object({
   animalId: z.string().min(1, 'Cow is required'),
   date: z.string().min(1, 'Date is required'),
@@ -27,6 +30,9 @@ export function BreedingForm() {
   const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const initialAnimalId = searchParams.get('animalId') || '';
+
+  // Manual bull name when "Not in inventory" is chosen for AI
+  const [manualBullName, setManualBullName] = useState('');
 
   const { animals, bulls, embryos, settings } = useLiveQuery(async () => {
     return {
@@ -56,24 +62,39 @@ export function BreedingForm() {
   });
 
   const breedingType = form.watch('breedingType');
+  const bullId = form.watch('bullId');
+  const isManualBull = bullId === MANUAL_BULL;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!settings) return;
 
     const breedingDate = new Date(values.date).toISOString();
-    const pregCheckDate = new Date(new Date(values.date).getTime() + settings.pregnancyCheckDays * 24 * 60 * 60 * 1000).toISOString();
+    const pregCheckDate = new Date(
+      new Date(values.date).getTime() + settings.pregnancyCheckDays * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    // Resolve bull: AI with inventory bull, AI with manual name, Natural Service, Embryo
+    const resolvedBullId =
+      values.breedingType === 'AI' && values.bullId && values.bullId !== MANUAL_BULL
+        ? values.bullId
+        : undefined;
+
+    const resolvedManualName =
+      values.breedingType === 'NaturalService'
+        ? values.naturalServiceBullName?.trim() || undefined
+        : values.breedingType === 'AI' && values.bullId === MANUAL_BULL
+        ? manualBullName.trim() || undefined
+        : undefined;
 
     await processBreeding({
       animalId: values.animalId,
       date: breedingDate,
       breedingType: values.breedingType,
-      bullId: values.breedingType === 'AI' ? (values.bullId || undefined) : undefined,
-      naturalServiceBullName: values.breedingType === 'NaturalService'
-        ? (values.naturalServiceBullName?.trim() || undefined)
-        : undefined,
+      bullId: resolvedBullId,
+      naturalServiceBullName: resolvedManualName,
       embryoId: values.breedingType === 'Embryo' ? (values.embryoId || undefined) : undefined,
       technician: values.technician,
-      pregnancyCheckScheduledDate: pregCheckDate
+      pregnancyCheckScheduledDate: pregCheckDate,
     });
 
     setLocation('/checklist/breeding');
@@ -97,6 +118,7 @@ export function BreedingForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
+              {/* Cow */}
               <FormField
                 control={form.control}
                 name="animalId"
@@ -109,7 +131,7 @@ export function BreedingForm() {
                           <SelectValue placeholder="Select cow" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="max-h-60 overflow-y-auto">
                         {animals.map(a => (
                           <SelectItem key={a.id} value={a.id}>
                             {a.number} - {a.name}
@@ -122,6 +144,7 @@ export function BreedingForm() {
                 )}
               />
 
+              {/* Date */}
               <FormField
                 control={form.control}
                 name="date"
@@ -136,6 +159,7 @@ export function BreedingForm() {
                 )}
               />
 
+              {/* Breeding Type */}
               <FormField
                 control={form.control}
                 name="breedingType"
@@ -144,9 +168,9 @@ export function BreedingForm() {
                     <FormLabel>Breeding Type</FormLabel>
                     <Select onValueChange={(val) => {
                       field.onChange(val);
-                      // clear the other selector when switching type
                       form.setValue('bullId', '');
                       form.setValue('embryoId', '');
+                      setManualBullName('');
                     }} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-12 text-lg">
@@ -164,33 +188,57 @@ export function BreedingForm() {
                 )}
               />
 
+              {/* AI — bull from inventory or manual */}
               {breedingType === 'AI' && (
-                <FormField
-                  control={form.control}
-                  name="bullId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Semen / Bull</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-12 text-lg">
-                            <SelectValue placeholder="Select bull" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {bulls.map(b => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.name}{b.naabCode ? ` — ${b.naabCode}` : ''}
+                <>
+                  <FormField
+                    control={form.control}
+                    name="bullId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Semen / Bull</FormLabel>
+                        <Select onValueChange={(val) => {
+                          field.onChange(val);
+                          if (val !== MANUAL_BULL) setManualBullName('');
+                        }} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-12 text-lg">
+                              <SelectValue placeholder="Select bull" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-60 overflow-y-auto">
+                            {bulls.map(b => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.name}{b.naabCode ? ` — ${b.naabCode}` : ''}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value={MANUAL_BULL}>
+                              ✏️ Not in inventory — enter manually
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {isManualBull && (
+                    <FormItem>
+                      <FormLabel>Bull Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="h-12 text-lg"
+                          placeholder="e.g. Holsteiner 1234, NAAB 7HO12345"
+                          value={manualBullName}
+                          onChange={e => setManualBullName(e.target.value)}
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
-                />
+                </>
               )}
 
+              {/* Natural Service */}
               {breedingType === 'NaturalService' && (
                 <FormField
                   control={form.control}
@@ -207,6 +255,7 @@ export function BreedingForm() {
                 />
               )}
 
+              {/* Embryo */}
               {breedingType === 'Embryo' && (
                 <FormField
                   control={form.control}
@@ -220,7 +269,7 @@ export function BreedingForm() {
                             <SelectValue placeholder="Select embryo lot (optional)" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="max-h-60 overflow-y-auto">
                           <SelectItem value="">Unknown / Not recorded</SelectItem>
                           {embryos.map(e => (
                             <SelectItem key={e.id} value={e.id}>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Home, List, Heart, FlaskConical, Menu, Plus } from 'lucide-react';
+import { Home, List, Heart, FlaskConical, Menu, Plus, Thermometer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -28,6 +28,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SidebarItem href="/" icon={Home} label="Home" active={location === '/'} />
           <SidebarItem href="/herd" icon={List} label="Herd" active={location.startsWith('/herd')} />
           <SidebarItem href="/breeding" icon={Heart} label="Record Breeding" active={location.startsWith('/breeding')} />
+          <SidebarItem href="/heat" icon={Thermometer} label="Record Heat" active={location.startsWith('/heat')} />
           <SidebarItem href="/semen" icon={FlaskConical} label="Semen Inventory" active={location.startsWith('/semen')} />
           <SidebarItem href="/more" icon={Menu} label="More" active={location.startsWith('/more')} />
         </nav>
