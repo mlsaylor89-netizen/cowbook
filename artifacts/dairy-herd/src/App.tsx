@@ -130,6 +130,7 @@ function Router() {
           
           <Route path="/semen" component={SemenInventory} />
           <Route path="/semen/new" component={SemenBullForm} />
+          <Route path="/semen/:id/edit" component={SemenBullForm} />
           <Route path="/semen/:id/purchase" component={SemenPurchaseForm} />
           <Route path="/semen/:id" component={SemenDetail} />
 

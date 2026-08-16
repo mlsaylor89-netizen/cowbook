@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useLocation, Link } from 'wouter';
+import { useState, useEffect } from 'react';
+import { useLocation, useRoute, Link } from 'wouter';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,16 @@ export function SemenBullForm() {
   const [, setLocation] = useLocation();
   const [saving, setSaving] = useState(false);
 
+  // Matches both /semen/new (create) and /semen/:id/edit (edit)
+  const [isNew] = useRoute('/semen/new');
+  const [isEdit, editParams] = useRoute('/semen/:id/edit');
+  const editId = isEdit ? editParams?.id : undefined;
+
+  const existingBull = useLiveQuery(
+    () => (editId ? db.semenBulls.get(editId) : Promise.resolve(undefined)),
+    [editId]
+  );
+
   const [form, setForm] = useState({
     name: '',
     naabCode: '',
@@ -19,6 +30,20 @@ export function SemenBullForm() {
     studCompany: '',
     notes: '',
   });
+
+  // Populate form when editing
+  useEffect(() => {
+    if (existingBull) {
+      setForm({
+        name: existingBull.name ?? '',
+        naabCode: existingBull.naabCode ?? '',
+        registrationNumber: existingBull.registrationNumber ?? '',
+        breed: existingBull.breed ?? '',
+        studCompany: existingBull.studCompany ?? '',
+        notes: existingBull.notes ?? '',
+      });
+    }
+  }, [existingBull]);
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }));
@@ -30,33 +55,56 @@ export function SemenBullForm() {
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      const id = self.crypto.randomUUID();
-      await db.semenBulls.add({
-        id,
-        name: form.name.trim(),
-        naabCode: form.naabCode.trim() || undefined,
-        registrationNumber: form.registrationNumber.trim() || undefined,
-        breed: form.breed.trim(),
-        studCompany: form.studCompany.trim() || undefined,
-        notes: form.notes.trim() || undefined,
-        createdAt: now,
-        updatedAt: now,
-      });
-      setLocation(`/semen/${id}`);
+      if (editId) {
+        await db.semenBulls.update(editId, {
+          name: form.name.trim(),
+          naabCode: form.naabCode.trim() || undefined,
+          registrationNumber: form.registrationNumber.trim() || undefined,
+          breed: form.breed.trim(),
+          studCompany: form.studCompany.trim() || undefined,
+          notes: form.notes.trim() || undefined,
+          updatedAt: now,
+        });
+        setLocation(`/semen/${editId}`);
+      } else {
+        const id = self.crypto.randomUUID();
+        await db.semenBulls.add({
+          id,
+          name: form.name.trim(),
+          naabCode: form.naabCode.trim() || undefined,
+          registrationNumber: form.registrationNumber.trim() || undefined,
+          breed: form.breed.trim(),
+          studCompany: form.studCompany.trim() || undefined,
+          notes: form.notes.trim() || undefined,
+          createdAt: now,
+          updatedAt: now,
+        });
+        setLocation(`/semen/${id}`);
+      }
     } finally {
       setSaving(false);
     }
   }
 
+  // Loading state for edit mode only
+  if (editId && existingBull === undefined) {
+    return <div className="p-4 text-center">Loading…</div>;
+  }
+  if (editId && existingBull === null) {
+    return <div className="p-4 text-center text-destructive">Bull not found.</div>;
+  }
+
+  const backHref = editId ? `/semen/${editId}` : '/semen';
+
   return (
     <div className="max-w-lg mx-auto pb-20">
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/semen">
+        <Link href={backHref}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
-        <h2 className="text-2xl font-bold">Add Bull</h2>
+        <h2 className="text-2xl font-bold">{editId ? 'Edit Bull' : 'Add Bull'}</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -122,7 +170,7 @@ export function SemenBullForm() {
         </div>
 
         <Button type="submit" className="w-full h-12 text-base font-bold" disabled={saving}>
-          {saving ? 'Saving…' : 'Add Bull'}
+          {saving ? 'Saving…' : editId ? 'Save Changes' : 'Add Bull'}
         </Button>
       </form>
     </div>
