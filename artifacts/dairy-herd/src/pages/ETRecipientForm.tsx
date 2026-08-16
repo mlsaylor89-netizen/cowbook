@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db } from '@/db';
@@ -10,10 +10,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Calendar } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 
 const formSchema = z.object({
   animalId: z.string().optional(),
@@ -30,12 +30,18 @@ export function ETRecipientForm() {
   const { farmId } = useAuth();
   const { toast } = useToast();
 
-  const { animals, embryos } = useLiveQuery(async () => ({
-    animals: (await db.animals.toArray()).sort((a, b) =>
-      (a.barnName || a.name).localeCompare(b.barnName || b.name)
-    ),
-    embryos: await db.embryos.toArray(),
-  })) ?? { animals: [], embryos: [] };
+  const { animals, embryos, gestationDays } = useLiveQuery(async () => {
+    const [animalsRaw, embryosRaw, settings] = await Promise.all([
+      db.animals.toArray(),
+      db.embryos.toArray(),
+      db.settings.get('default'),
+    ]);
+    return {
+      animals: animalsRaw.sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name)),
+      embryos: embryosRaw,
+      gestationDays: settings?.gestationDays ?? 283,
+    };
+  }) ?? { animals: [], embryos: [], gestationDays: 283 };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,7 +56,15 @@ export function ETRecipientForm() {
     },
   });
 
-  // When an animal from the dropdown is chosen, auto-fill the identifier field
+  // Live-derived due date = transferDate + (gestationDays − 7)
+  const transferDate = useWatch({ control: form.control, name: 'transferDate' });
+  const expectedCalvingDate = (() => {
+    if (!transferDate) return null;
+    try {
+      return addDays(parseISO(transferDate), gestationDays - 7);
+    } catch { return null; }
+  })();
+
   function handleAnimalSelect(animalId: string) {
     form.setValue('animalId', animalId);
     if (animalId) {
@@ -62,7 +76,6 @@ export function ETRecipientForm() {
     }
   }
 
-  // When an embryo lot is chosen, auto-fill the identifier
   function handleEmbryoSelect(embryoId: string) {
     form.setValue('embryoId', embryoId);
     if (embryoId) {
@@ -76,6 +89,10 @@ export function ETRecipientForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const now = new Date().toISOString();
+    const calvingDate = values.transferDate
+      ? addDays(parseISO(values.transferDate), gestationDays - 7).toISOString()
+      : undefined;
+
     await db.etRecipients.add({
       id: crypto.randomUUID(),
       farmId: farmId ?? 'demo-farm',
@@ -85,6 +102,7 @@ export function ETRecipientForm() {
       embryoId: values.embryoId || undefined,
       embryoIdentifier: values.embryoIdentifier?.trim() || undefined,
       transferDate: values.transferDate || undefined,
+      expectedCalvingDate: calvingDate,
       status: 'pending',
       notes: values.notes?.trim() || undefined,
       createdAt: now,
@@ -110,7 +128,7 @@ export function ETRecipientForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
 
-              {/* Animal ID */}
+              {/* Animal */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Recipient Animal</h3>
 
@@ -175,14 +193,14 @@ export function ETRecipientForm() {
                   <FormItem>
                     <FormLabel>Embryo ID / Description</FormLabel>
                     <FormControl>
-                      <Input className="h-12" placeholder="e.g. Lot #4, Grade 1, Donor Ella × Sire Max" {...field} />
+                      <Input className="h-12" placeholder="e.g. Grade 1, Donor Ella × Sire Max" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
               </div>
 
-              {/* Transfer date & notes */}
+              {/* Transfer date & due date */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Transfer Details</h3>
 
@@ -195,6 +213,24 @@ export function ETRecipientForm() {
                     <FormMessage />
                   </FormItem>
                 )} />
+
+                {/* Calculated due date */}
+                {expectedCalvingDate && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
+                    <Calendar className="h-4 w-4 text-violet-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide">
+                        Expected Calving Date
+                      </p>
+                      <p className="font-bold text-violet-900 dark:text-violet-100">
+                        {format(expectedCalvingDate, 'EEEE, MMM d, yyyy')}
+                      </p>
+                      <p className="text-xs text-violet-600 dark:text-violet-400">
+                        Transfer date + {gestationDays - 7} days (gestation {gestationDays}d − 7d for recipient)
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem>

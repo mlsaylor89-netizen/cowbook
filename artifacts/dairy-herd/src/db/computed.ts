@@ -1,5 +1,5 @@
 import { addDays, differenceInDays, differenceInHours, isBefore, isAfter, subDays, isToday, parseISO } from 'date-fns';
-import { db, type Animal, type Breeding, type PregnancyCheck, type Calving, type Treatment, type Settings, type HeatObservation } from './index';
+import { db, type Animal, type Breeding, type PregnancyCheck, type Calving, type Treatment, type Settings, type HeatObservation, type ETRecipientRecord } from './index';
 
 // ── Status helpers: prefer new split fields, fall back for old records ──────
 
@@ -160,24 +160,38 @@ export function getDryOffList(animals: Animal[], settings: Settings) {
   })).sort((a, b) => (a.animal.barnName || a.animal.name).localeCompare(b.animal.barnName || b.animal.name));
 }
 
-export function getUpcomingCalvings(animals: Animal[]) {
+export function getUpcomingCalvings(animals: Animal[], etRecipients: ETRecipientRecord[] = []) {
   const now = new Date();
   const next60 = addDays(now, 60);
 
-  const due = animals.filter(a => {
+  const animalItems = animals.filter(a => {
     if (!isActive(a)) return false;
     if (reproStat(a) !== 'Pregnant') return false;
     if (!a.expectedCalvingDate) return false;
     return isBefore(parseISO(a.expectedCalvingDate), next60);
   }).map(a => ({
+    kind: 'animal' as const,
     animal: a,
-    daysUntilCalving: differenceInDays(parseISO(a.expectedCalvingDate!), now)
-  })).sort((a, b) => a.daysUntilCalving - b.daysUntilCalving);
+    daysUntilCalving: differenceInDays(parseISO(a.expectedCalvingDate!), now),
+  }));
+
+  // ET recipients with a calculated due date (not pregnant/failed, has expectedCalvingDate)
+  const etItems = etRecipients.filter(r =>
+    r.expectedCalvingDate &&
+    r.status !== 'failed' &&
+    isBefore(parseISO(r.expectedCalvingDate), next60)
+  ).map(r => ({
+    kind: 'et' as const,
+    recipient: r,
+    daysUntilCalving: differenceInDays(parseISO(r.expectedCalvingDate!), now),
+  }));
+
+  const due = [...animalItems, ...etItems].sort((a, b) => a.daysUntilCalving - b.daysUntilCalving);
 
   return {
-    due7Days: due.filter(d => d.daysUntilCalving <= 7),
+    due7Days:  due.filter(d => d.daysUntilCalving <= 7),
     due30Days: due.filter(d => d.daysUntilCalving > 7 && d.daysUntilCalving <= 30),
-    due60Days: due.filter(d => d.daysUntilCalving > 30)
+    due60Days: due.filter(d => d.daysUntilCalving > 30),
   };
 }
 

@@ -291,6 +291,7 @@ export interface ETRecipientRecord {
   embryoId?: string;          // link to embryo lot
   embryoIdentifier?: string;  // free-text embryo ID
   transferDate?: string;
+  expectedCalvingDate?: string; // transferDate + (gestationDays − 7)
   status: 'pending' | 'transferred' | 'pregnant' | 'failed';
   notes?: string;
   createdAt: string;

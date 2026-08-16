@@ -15,12 +15,13 @@ export function Checklist() {
 
   const data = useLiveQuery(async () => {
     const animals = await db.animals.toArray();
-    const [breedings, pregChecks, treatments, heats, settings] = await Promise.all([
+    const [breedings, pregChecks, treatments, heats, settings, etRecipientRecords] = await Promise.all([
       db.breedings.toArray(),
       db.pregnancyChecks.toArray(),
       db.treatments.toArray(),
       db.heats.toArray(),
       db.settings.get('default'),
+      db.etRecipients.toArray(),
     ]);
     if (!settings) return null;
 
@@ -30,7 +31,7 @@ export function Checklist() {
       fresh: getFreshCowList(animals, settings),
       breedingAttention: getBreedingAttentionList(animals, breedings, settings),
       dryOff: getDryOffList(animals, settings),
-      calvings: getUpcomingCalvings(animals),
+      calvings: getUpcomingCalvings(animals, etRecipientRecords),
       treatments: getTreatmentFollowUp(treatments, animals),
       watchHeat: getWatchForHeatList(animals, breedings, heats),
       etRecipients: getETRecipientList(animals, heats),
@@ -263,13 +264,15 @@ function CalvingsList({ list }: { list: any }) {
   const all = [...list.due7Days, ...list.due30Days, ...list.due60Days];
   if (all.length === 0) return <EmptyState text="No upcoming calvings." />;
 
+  const rowKey = (item: any) => item.kind === 'et' ? `et-${item.recipient.id}` : item.animal.id;
+
   return (
     <div className="space-y-6">
       {list.due7Days.length > 0 && (
         <div>
           <h3 className="text-sm font-bold text-destructive uppercase tracking-wider mb-3 px-1">Due in ≤ 7 Days</h3>
           <div className="space-y-3">
-            {list.due7Days.map((item: any) => <CalvingRow key={item.animal.id} item={item} />)}
+            {list.due7Days.map((item: any) => <CalvingRow key={rowKey(item)} item={item} />)}
           </div>
         </div>
       )}
@@ -277,7 +280,15 @@ function CalvingsList({ list }: { list: any }) {
         <div>
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Due in 8–30 Days</h3>
           <div className="space-y-3">
-            {list.due30Days.map((item: any) => <CalvingRow key={item.animal.id} item={item} />)}
+            {list.due30Days.map((item: any) => <CalvingRow key={rowKey(item)} item={item} />)}
+          </div>
+        </div>
+      )}
+      {list.due60Days.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Due in 31–60 Days</h3>
+          <div className="space-y-3">
+            {list.due60Days.map((item: any) => <CalvingRow key={rowKey(item)} item={item} />)}
           </div>
         </div>
       )}
@@ -286,19 +297,54 @@ function CalvingsList({ list }: { list: any }) {
 }
 
 function CalvingRow({ item }: { item: any }) {
-  const { animal, daysUntilCalving } = item;
+  const { daysUntilCalving } = item;
+  const isOverdue = daysUntilCalving < 0;
+  const urgentColor = isOverdue || daysUntilCalving <= 7 ? 'text-destructive' : '';
+
+  if (item.kind === 'et') {
+    const r = item.recipient;
+    return (
+      <Card className="border-violet-200 dark:border-violet-800">
+        <CardContent className="p-4 flex justify-between items-center gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-lg">{r.animalIdentifier}</p>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                ET Recipient
+              </span>
+            </div>
+            {r.location && <p className="text-sm text-muted-foreground">📍 {r.location}</p>}
+            {r.embryoIdentifier && <p className="text-sm text-muted-foreground">🧬 {r.embryoIdentifier}</p>}
+            <p className="text-sm text-muted-foreground">
+              Due: {format(parseISO(r.expectedCalvingDate!), 'MMM d, yyyy')}
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className={`font-bold text-lg ${urgentColor}`}>
+              {isOverdue ? 'Past Due' : `${daysUntilCalving}d`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { animal } = item;
+  const displayName = [animal.number, animal.barnName || animal.name].filter(Boolean).join(' ');
   return (
     <Card>
-      <CardContent className="p-4 flex justify-between items-center">
-        <div>
+      <CardContent className="p-4 flex justify-between items-center gap-3">
+        <div className="min-w-0">
           <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
-            {animal.number} {animal.name}
+            {displayName}
           </Link>
-          <p className="text-sm text-muted-foreground">Date: {format(parseISO(animal.expectedCalvingDate!), 'MMM d, yyyy')}</p>
+          <p className="text-sm text-muted-foreground">
+            Due: {format(parseISO(animal.expectedCalvingDate!), 'MMM d, yyyy')}
+          </p>
         </div>
-        <div className="text-right">
-          <p className={`font-bold text-lg ${daysUntilCalving <= 7 ? 'text-destructive' : ''}`}>
-            {daysUntilCalving < 0 ? 'Past Due' : `${daysUntilCalving} days`}
+        <div className="text-right shrink-0">
+          <p className={`font-bold text-lg ${urgentColor}`}>
+            {isOverdue ? 'Past Due' : `${daysUntilCalving}d`}
           </p>
         </div>
       </CardContent>
