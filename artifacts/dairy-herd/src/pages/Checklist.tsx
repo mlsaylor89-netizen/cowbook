@@ -4,9 +4,10 @@ import { getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffL
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link, useRoute } from 'wouter';
-import { ArrowLeft, Check, X, Calendar, AlertCircle, Thermometer, Pipette, Eye } from 'lucide-react';
+import { ArrowLeft, Check, X, Calendar, AlertCircle, Thermometer, Pipette, Eye, Moon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export function Checklist() {
   const [match, params] = useRoute('/checklist/:type');
@@ -182,26 +183,77 @@ function BreedingAttentionList({ list }: { list: any[] }) {
   );
 }
 
+function DryOffRow({ animal, daysUntilDryOff }: { animal: any; daysUntilDryOff: number }) {
+  const { toast } = useToast();
+  const [marking, setMarking] = useState(false);
+
+  const displayName = [animal.number, animal.barnName || animal.name].filter(Boolean).join(' ');
+
+  async function markDry() {
+    if (!confirm(`Mark ${displayName} as dry?`)) return;
+    setMarking(true);
+    try {
+      const now = new Date().toISOString();
+      await db.animals.update(animal.id, {
+        lactationStatus: 'Dry',
+        status: 'Dry',
+        updatedAt: now,
+      });
+      await db.animalNotes.add({
+        id: crypto.randomUUID(),
+        animalId: animal.id,
+        note: `Marked dry on ${format(new Date(), 'MMM d, yyyy')}.`,
+        createdAt: now,
+      });
+      toast({ title: 'Marked dry', description: `${displayName} removed from dry-off list.` });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to mark dry', variant: 'destructive' });
+      setMarking(false);
+    }
+  }
+
+  return (
+    <Card className={daysUntilDryOff < 0 ? 'border-destructive/50' : ''}>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0">
+            <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
+              {displayName}
+            </Link>
+            <p className="text-sm text-muted-foreground">
+              Due to calve: {format(parseISO(animal.expectedCalvingDate!), 'MMM d, yyyy')}
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className={`font-bold text-lg ${daysUntilDryOff < 0 ? 'text-destructive' : ''}`}>
+              {daysUntilDryOff < 0 ? 'Past Due' : `${daysUntilDryOff}d`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {format(parseISO(animal.expectedDryOffDate!), 'MMM d')}
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full gap-2 border-slate-400 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          onClick={markDry}
+          disabled={marking}
+        >
+          <Moon className="h-4 w-4" />
+          {marking ? 'Saving…' : 'Mark Dry'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function DryOffList({ list }: { list: any[] }) {
   if (list.length === 0) return <EmptyState text="No cows approaching dry-off." />;
-
   return (
     <div className="space-y-3">
       {list.map(({ animal, daysUntilDryOff }) => (
-        <Card key={animal.id}>
-          <CardContent className="p-4 flex justify-between items-center">
-            <div>
-              <Link href={`/herd/${animal.id}`} className="font-bold text-lg text-primary hover:underline">
-                {animal.number} {animal.name}
-              </Link>
-              <p className="text-sm text-muted-foreground">Due: {format(parseISO(animal.expectedCalvingDate!), 'MMM d, yyyy')}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-lg">{daysUntilDryOff < 0 ? 'Past Due' : `${daysUntilDryOff} days`}</p>
-              <p className="text-xs text-muted-foreground text-right">{format(parseISO(animal.expectedDryOffDate!), 'MMM d')}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <DryOffRow key={animal.id} animal={animal} daysUntilDryOff={daysUntilDryOff} />
       ))}
     </div>
   );

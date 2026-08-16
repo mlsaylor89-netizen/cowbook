@@ -149,6 +149,8 @@ export function getDryOffList(animals: Animal[], settings: Settings) {
 
   return animals.filter(a => {
     if (!isActive(a)) return false;
+    if (lactStat(a) === 'Heifer') return false; // pregnant heifers don't go dry
+    if (lactStat(a) === 'Dry') return false;    // already dry — don't re-list
     if (reproStat(a) !== 'Pregnant') return false;
     if (!a.expectedDryOffDate) return false;
     return isBefore(parseISO(a.expectedDryOffDate), warningWindow);
