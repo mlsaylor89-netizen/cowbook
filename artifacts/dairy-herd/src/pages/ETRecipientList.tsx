@@ -21,7 +21,9 @@ export function ETRecipientList() {
   const [filter, setFilter] = useState<ETRecipientRecord['status'] | 'all'>('all');
 
   const records = useLiveQuery(async () => {
-    const all = await db.etRecipients.orderBy('createdAt').reverse().toArray();
+    const all = (await db.etRecipients.toArray()).sort(
+      (a, b) => b.createdAt.localeCompare(a.createdAt)
+    );
     const animals = await db.animals.toArray();
     const animalMap = new Map(animals.map(a => [a.id, a]));
     return all.map(r => ({ ...r, linkedAnimal: r.animalId ? animalMap.get(r.animalId) : undefined }));
