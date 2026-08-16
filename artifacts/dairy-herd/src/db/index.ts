@@ -167,6 +167,7 @@ export interface EmbryoPurchase {
   unitsCount: number;
   pricePerUnit: number;
   totalCost: number;
+  gradeBreakdown?: { grade: string; count: number }[];  // e.g. [{grade:'1',count:8},{grade:'2',count:2}]
   notes?: string;
   createdAt: string;
   updatedAt: string;

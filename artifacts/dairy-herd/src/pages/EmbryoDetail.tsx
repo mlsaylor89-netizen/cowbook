@@ -42,12 +42,23 @@ export function EmbryoDetail() {
     const totalBought = purchases.reduce((sum, p) => sum + p.unitsCount, 0);
     const inventory = totalBought - breedings.length;
 
-    return { embryo, purchases, breedings, inventory };
+    // Aggregate grade breakdown across all purchases
+    const gradeMap = new Map<string, number>();
+    for (const p of purchases) {
+      for (const g of p.gradeBreakdown ?? []) {
+        gradeMap.set(g.grade, (gradeMap.get(g.grade) ?? 0) + g.count);
+      }
+    }
+    const grades = [...gradeMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(([grade, count]) => ({ grade, count }));
+
+    return { embryo, purchases, breedings, inventory, grades };
   }, [id]);
 
   if (!data) return <div className="p-4 text-center">Loading...</div>;
 
-  const { embryo, purchases, breedings, inventory } = data;
+  const { embryo, purchases, breedings, inventory, grades } = data;
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto pb-20">
@@ -70,6 +81,15 @@ export function EmbryoDetail() {
           <p className="text-sm font-bold uppercase tracking-widest opacity-80">Current Inventory</p>
           <p className="text-6xl font-bold my-2">{inventory}</p>
           <p className="text-sm opacity-80">Embryos Available</p>
+          {grades.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 mt-3">
+              {grades.map(g => (
+                <span key={g.grade} className="bg-white/20 text-white text-sm font-bold px-3 py-1 rounded-full">
+                  Grade {g.grade}: {g.count}
+                </span>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -125,12 +145,21 @@ export function EmbryoDetail() {
           <div className="space-y-2">
             {purchases.map(p => (
               <Card key={p.id}>
-                <CardContent className="p-3 flex justify-between items-center">
-                  <div>
+                <CardContent className="p-3 flex justify-between items-center gap-3">
+                  <div className="min-w-0">
                     <p className="font-bold">{format(parseISO(p.purchaseDate), 'MMM d, yyyy')}</p>
                     <p className="text-sm text-muted-foreground">${p.pricePerUnit}/embryo</p>
+                    {p.gradeBreakdown && p.gradeBreakdown.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {p.gradeBreakdown.map(g => (
+                          <span key={g.grade} className="text-xs px-1.5 py-0.5 rounded bg-muted font-semibold text-muted-foreground">
+                            G{g.grade}: {g.count}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <p className="font-bold text-lg">+{p.unitsCount}</p>
                     <p className="text-sm text-muted-foreground">${p.totalCost}</p>
                   </div>

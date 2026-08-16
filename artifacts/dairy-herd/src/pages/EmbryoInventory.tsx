@@ -18,7 +18,19 @@ export function EmbryoInventory() {
       const totalBought = embryoPurchases.reduce((sum, p) => sum + p.unitsCount, 0);
       const totalUsed = breedings.filter(b => b.embryoId === embryo.id).length;
       const inventory = totalBought - totalUsed;
-      return { embryo, inventory, isLow: inventory <= 2 };
+
+      // Aggregate grade breakdown across all purchases
+      const gradeMap = new Map<string, number>();
+      for (const p of embryoPurchases) {
+        for (const g of p.gradeBreakdown ?? []) {
+          gradeMap.set(g.grade, (gradeMap.get(g.grade) ?? 0) + g.count);
+        }
+      }
+      const grades = [...gradeMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+        .map(([grade, count]) => ({ grade, count }));
+
+      return { embryo, inventory, isLow: inventory <= 2, grades };
     });
   });
 
@@ -52,6 +64,15 @@ export function EmbryoInventory() {
                     <p className="text-sm text-muted-foreground truncate">
                       {embryo.sireName ? `× ${embryo.sireName}` : embryo.breed}
                     </p>
+                    {grades.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {grades.map(g => (
+                          <span key={g.grade} className="text-xs px-1.5 py-0.5 rounded bg-muted font-semibold text-muted-foreground">
+                            G{g.grade}: {g.count}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="text-right">

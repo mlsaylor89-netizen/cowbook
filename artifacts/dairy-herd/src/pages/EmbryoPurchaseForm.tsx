@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
+const GRADES = ['1', '2', '3', '4'];
+
 export function EmbryoPurchaseForm() {
   const [, params] = useRoute('/embryo/:id/purchase');
   const embryoId = params?.id ?? '';
@@ -24,13 +26,25 @@ export function EmbryoPurchaseForm() {
     notes: '',
   });
 
+  // Grade breakdown: keyed by grade string, value is raw input string
+  const [gradeInputs, setGradeInputs] = useState<Record<string, string>>({});
+
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }));
+  }
+
+  function setGrade(grade: string, value: string) {
+    setGradeInputs(prev => ({ ...prev, [grade]: value }));
   }
 
   const units = parseInt(form.unitsCount) || 0;
   const price = parseFloat(form.pricePerUnit) || 0;
   const total = units * price;
+
+  // Sum of all entered grade quantities
+  const gradeTotal = GRADES.reduce((sum, g) => sum + (parseInt(gradeInputs[g] || '0') || 0), 0);
+  const hasAnyGrade = gradeTotal > 0;
+  const gradeMismatch = hasAnyGrade && units > 0 && gradeTotal !== units;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +52,12 @@ export function EmbryoPurchaseForm() {
     setSaving(true);
     try {
       const now = new Date().toISOString();
+
+      // Build grade breakdown — only include grades with a positive count
+      const gradeBreakdown = GRADES
+        .map(g => ({ grade: g, count: parseInt(gradeInputs[g] || '0') || 0 }))
+        .filter(g => g.count > 0);
+
       await db.embryoPurchases.add({
         id: self.crypto.randomUUID(),
         embryoId,
@@ -45,6 +65,7 @@ export function EmbryoPurchaseForm() {
         unitsCount: units,
         pricePerUnit: price,
         totalCost: parseFloat(total.toFixed(2)),
+        gradeBreakdown: gradeBreakdown.length > 0 ? gradeBreakdown : undefined,
         notes: form.notes.trim() || undefined,
         createdAt: now,
         updatedAt: now,
@@ -85,7 +106,7 @@ export function EmbryoPurchaseForm() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="unitsCount">Embryos Purchased *</Label>
+          <Label htmlFor="unitsCount">Total Embryos *</Label>
           <Input
             id="unitsCount"
             type="number"
@@ -93,9 +114,43 @@ export function EmbryoPurchaseForm() {
             min={1}
             value={form.unitsCount}
             onChange={e => set('unitsCount', e.target.value)}
-            placeholder="e.g. 5"
+            placeholder="e.g. 10"
             required
           />
+        </div>
+
+        {/* Grade Breakdown */}
+        <div className="space-y-3">
+          <div>
+            <Label>Grade Breakdown <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Enter how many embryos are each grade. Leave blank if not graded.
+            </p>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {GRADES.map(g => (
+              <div key={g} className="space-y-1">
+                <Label htmlFor={`grade-${g}`} className="text-xs text-center block">Grade {g}</Label>
+                <Input
+                  id={`grade-${g}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={gradeInputs[g] || ''}
+                  onChange={e => setGrade(g, e.target.value)}
+                  placeholder="0"
+                  className="text-center"
+                />
+              </div>
+            ))}
+          </div>
+          {hasAnyGrade && (
+            <div className={`text-xs flex items-center justify-between px-1 ${gradeMismatch ? 'text-destructive' : 'text-muted-foreground'}`}>
+              <span>Grade total: <strong>{gradeTotal}</strong></span>
+              {gradeMismatch && <span>⚠ Must equal {units} total embryos</span>}
+              {!gradeMismatch && units > 0 && <span className="text-green-600">✓ Matches</span>}
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -130,7 +185,11 @@ export function EmbryoPurchaseForm() {
           />
         </div>
 
-        <Button type="submit" className="w-full h-12 text-base font-bold" disabled={saving || units <= 0}>
+        <Button
+          type="submit"
+          className="w-full h-12 text-base font-bold"
+          disabled={saving || units <= 0 || gradeMismatch}
+        >
           {saving ? 'Saving…' : 'Record Purchase'}
         </Button>
       </form>
