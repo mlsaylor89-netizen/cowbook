@@ -23,19 +23,25 @@ export function SemenInventory() {
       const totalUsed = breedings.filter(b => b.bullId === bull.id).length;
       const inventory = totalBought - totalUsed;
 
-      // Collect unique tank/canister location strings for quick display
-      const locations = Array.from(
-        new Set(
-          bullPurchases
-            .filter(p => p.tankNumber || p.canisterNumber)
-            .map(p => {
-              const parts: string[] = [];
-              if (p.tankNumber) parts.push(`Tank ${p.tankNumber}`);
-              if (p.canisterNumber) parts.push(`Can. ${p.canisterNumber}`);
-              return parts.join(' / ');
-            })
-        )
-      );
+      // Build location string — prefer fields on the bull record, fall back to purchases
+      const locationParts: string[] = [];
+      if (bull.tankNumber) locationParts.push(`Tank ${bull.tankNumber}`);
+      if (bull.canisterNumber) locationParts.push(`Can. ${bull.canisterNumber}`);
+
+      const locations: string[] = locationParts.length > 0
+        ? [locationParts.join(' / ')]
+        : Array.from(
+            new Set(
+              bullPurchases
+                .filter(p => p.tankNumber || p.canisterNumber)
+                .map(p => {
+                  const parts: string[] = [];
+                  if (p.tankNumber) parts.push(`Tank ${p.tankNumber}`);
+                  if (p.canisterNumber) parts.push(`Can. ${p.canisterNumber}`);
+                  return parts.join(' / ');
+                })
+            )
+          );
 
       return {
         bull,
