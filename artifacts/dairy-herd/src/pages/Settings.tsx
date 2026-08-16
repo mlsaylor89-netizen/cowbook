@@ -7,7 +7,7 @@ import { Link } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Save, Copy, CheckCheck, RefreshCw, UserMinus, Shield, Crown } from 'lucide-react';
+import { ArrowLeft, Save, Copy, CheckCheck, RefreshCw, UserMinus, Shield, Crown, AlertTriangle, Trash2 } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/useAuth';
@@ -43,6 +43,38 @@ const formSchema = z.object({
 
 export function Settings() {
   const { toast } = useToast();
+  const [clearing, setClearing] = useState(false);
+  const [clearArmed, setClearArmed] = useState(false);
+
+  async function clearAllData() {
+    if (!clearArmed) { setClearArmed(true); return; }
+    setClearing(true);
+    setClearArmed(false);
+    try {
+      await Promise.all([
+        db.animals.clear(),
+        db.breedings.clear(),
+        db.pregnancyChecks.clear(),
+        db.calvings.clear(),
+        db.treatments.clear(),
+        db.semenBulls.clear(),
+        db.semenPurchases.clear(),
+        db.animalNotes.clear(),
+        db.classifications.clear(),
+        db.embryos.clear(),
+        db.embryoPurchases.clear(),
+        db.drugProducts.clear(),
+        db.heats.clear(),
+        db.syncProtocolBatches.clear(),
+        db.syncEvents.clear(),
+        db.flushRecords.clear(),
+        db.etRecipients.clear(),
+      ]);
+      toast({ title: 'All data cleared', description: 'Every animal, event, and inventory record has been deleted. Settings were kept.' });
+    } finally {
+      setClearing(false);
+    }
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -194,6 +226,56 @@ export function Settings() {
 
       {/* ── Farm / Users ── */}
       <FarmUsersSection />
+
+      {/* ── Danger Zone ── */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-destructive uppercase tracking-wider px-1 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" /> Danger Zone
+        </h3>
+        <Card className="border-destructive/40">
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <p className="font-bold">Clear All Demo Data</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Permanently deletes every animal, breeding, calving, heat, treatment, pregnancy check,
+                inventory record, and ET recipient. Your farm settings are kept.
+              </p>
+            </div>
+
+            {clearArmed ? (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  This will erase everything. Tap again to confirm.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    className="flex-1 gap-2"
+                    onClick={clearAllData}
+                    disabled={clearing}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {clearing ? 'Clearing…' : 'Yes, delete everything'}
+                  </Button>
+                  <Button variant="outline" onClick={() => setClearArmed(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive"
+                onClick={clearAllData}
+                disabled={clearing}
+              >
+                <Trash2 className="h-4 w-4" /> Clear All Data
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
