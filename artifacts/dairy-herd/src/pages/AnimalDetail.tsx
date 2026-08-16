@@ -1,14 +1,37 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { db } from '@/db';
 import { getDIM } from '@/db/computed';
 import { Link, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer } from 'lucide-react';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+
+/** Compress an image file to a JPEG data URL, max 900px on longest side. */
+async function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 900;
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+        else { width = Math.round((width * MAX) / height); height = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.78));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
 /** Safely format an ISO date string — returns fallback if missing or invalid. */
 function fmt(dateStr: string | undefined | null, pattern: string, fallback = '—') {
@@ -28,6 +51,8 @@ export function AnimalDetail() {
   const [match, params] = useRoute('/herd/:id');
   const id = params?.id;
   const { toast } = useToast();
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const data = useLiveQuery(async () => {
     if (!id) return null;
@@ -50,6 +75,26 @@ export function AnimalDetail() {
 
   const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats } = data;
   const dim = getDIM(animal);
+
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setPhotoUploading(true);
+    try {
+      const photoUrl = await compressImage(file);
+      await db.animals.update(id, { photoUrl, updatedAt: new Date().toISOString() });
+    } catch {
+      toast({ title: 'Could not save photo', variant: 'destructive' });
+    } finally {
+      setPhotoUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function removePhoto() {
+    if (!id || !confirm('Remove this photo?')) return;
+    await db.animals.update(id, { photoUrl: undefined, updatedAt: new Date().toISOString() });
+  }
 
   async function deleteEvent(type: 'breeding' | 'calving' | 'heat', eventId: string) {
     if (!confirm(`Remove this ${type} record? This cannot be undone.`)) return;
@@ -80,6 +125,50 @@ export function AnimalDetail() {
           </Button>
         </Link>
       </div>
+
+      {/* Photo */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
+      {animal.photoUrl ? (
+        <div className="relative w-full rounded-xl overflow-hidden bg-muted" style={{ aspectRatio: '16/9' }}>
+          <img
+            src={animal.photoUrl}
+            alt={animal.barnName || animal.name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-2 right-2 flex gap-1.5">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors"
+              title="Replace photo"
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+            <button
+              onClick={removePhoto}
+              className="bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors"
+              title="Remove photo"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={photoUploading}
+          className="w-full rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/40 transition-colors flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground"
+        >
+          <Camera className="h-8 w-8" />
+          <span className="text-sm font-medium">{photoUploading ? 'Saving…' : 'Add photo'}</span>
+        </button>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

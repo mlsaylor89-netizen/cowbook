@@ -208,14 +208,16 @@ export function HerdList() {
                   <Card className={`shadow-sm transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
                     <CardContent className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 transition-colors ${
+                        <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 transition-colors overflow-hidden ${
                           isSelected
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary text-secondary-foreground'
                         }`}>
                           {isSelected
                             ? <CheckSquare className="h-6 w-6" />
-                            : animal.number}
+                            : animal.photoUrl
+                              ? <img src={animal.photoUrl} alt="" className="w-full h-full object-cover" />
+                              : animal.number}
                         </div>
                         <div>
                           <p className="font-bold text-base leading-tight">
@@ -244,8 +246,10 @@ export function HerdList() {
                 <Card className="shadow-sm">
                   <CardContent className="p-3 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center font-bold text-lg shrink-0">
-                        {animal.number}
+                      <div className="h-12 w-12 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden">
+                        {animal.photoUrl
+                          ? <img src={animal.photoUrl} alt="" className="w-full h-full object-cover" />
+                          : animal.number}
                       </div>
                       <div>
                         <p className="font-bold text-base leading-tight">

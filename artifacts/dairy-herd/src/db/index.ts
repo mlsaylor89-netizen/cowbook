@@ -23,6 +23,7 @@ export interface Animal {
   lastCalvingDate?: string;
   expectedCalvingDate?: string;
   expectedDryOffDate?: string;
+  photoUrl?: string;       // base64 data URL stored locally in IndexedDB
   notes?: string;
   createdAt: string;
   updatedAt: string;
