@@ -225,7 +225,8 @@ export interface SyncEvent {
   day: number;             // offset from startDate (can be 0)
   eventType: SyncEventType;
   label: string;           // e.g. 'GnRH #1', 'PGF₂α'
-  scheduledDate: string;   // 'yyyy-MM-dd'
+  scheduledDate: string;   // 'yyyy-MM-dd' (kept for index/filtering)
+  scheduledTime?: string;  // 'HH:mm' — set when first-shot time is captured
   status: 'pending' | 'completed' | 'skipped';
   completedAt?: string;
   notes?: string;

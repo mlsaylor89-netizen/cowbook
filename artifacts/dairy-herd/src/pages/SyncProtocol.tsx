@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { format, parseISO, addDays, isToday, isPast, isFuture } from 'date-fns';
+import { format, parseISO, addDays, addHours, isToday, isPast, isFuture } from 'date-fns';
 import { db } from '@/db';
 import type { SyncProtocolType } from '@/db';
 import { useAuth } from '@/contexts/useAuth';
@@ -79,7 +79,11 @@ function EventList() {
       .where('status').equals('pending')
       .toArray();
 
-    events.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+    events.sort((a, b) => {
+      const d = a.scheduledDate.localeCompare(b.scheduledDate);
+      if (d !== 0) return d;
+      return (a.scheduledTime ?? '').localeCompare(b.scheduledTime ?? '');
+    });
 
     const animalIds = [...new Set(events.map(e => e.animalId))];
     const batchIds  = [...new Set(events.map(e => e.batchId))];
@@ -137,10 +141,20 @@ function EventList() {
           <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${meta.bgColor} ${meta.color} shrink-0`}>
             {meta.shortLabel}
           </span>
-          <span className="font-semibold text-sm truncate">
-            {animal ? animalLabel(animal) : event.animalId}
-          </span>
-          <span className="text-xs text-muted-foreground hidden sm:inline">{event.label}</span>
+          <div className="min-w-0">
+            <span className="font-semibold text-sm truncate block">
+              {animal ? animalLabel(animal) : event.animalId}
+            </span>
+            {event.scheduledTime && (
+              <span className="text-xs text-muted-foreground font-medium">{
+                (() => {
+                  const [h, m] = event.scheduledTime.split(':').map(Number);
+                  const d = new Date(); d.setHours(h, m, 0);
+                  return format(d, 'h:mm a');
+                })()
+              }</span>
+            )}
+          </div>
         </div>
         <div className="flex gap-1 shrink-0">
           {event.eventType === 'timed-ai' ? (
@@ -215,7 +229,10 @@ function EventList() {
                     <p className="font-semibold text-sm">{def?.label ?? batch?.protocol}</p>
                     <p className="text-xs text-muted-foreground">
                       Started {batch?.startDate} · {batchEvents.length} events left ·
-                      Next: <span className="font-medium">{format(parseISO(nextEvent.scheduledDate), 'MMM d')}</span>
+                      Next: <span className="font-medium">
+                        {format(parseISO(nextEvent.scheduledDate), 'MMM d')}
+                        {nextEvent.scheduledTime && ` ${(() => { const [h,m]=nextEvent.scheduledTime.split(':').map(Number); const d=new Date(); d.setHours(h,m,0); return format(d,'h:mm a'); })()}`}
+                      </span>
                     </p>
                   </div>
                   {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -244,8 +261,12 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
   // Wizard state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [protocol, setProtocol] = useState<SyncProtocolType | null>(null);
-  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  // startDatetime is stored in the datetime-local input format: 'yyyy-MM-ddTHH:mm'
+  const [startDatetime, setStartDatetime] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [saving, setSaving] = useState(false);
+
+  // Derived: date-only portion for batch record & display
+  const startDate = startDatetime.slice(0, 10);
 
   // Animal search
   const [animalSearch, setAnimalSearch] = useState('');
@@ -270,16 +291,21 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
       : animals;
   }, [animals, animalSearch]);
 
-  // Computed schedule for preview
+  // Computed schedule for preview — hour-accurate
   const protocolDef = protocol ? PROTOCOL_DEFS[protocol] : null;
   const scheduledEvents = useMemo(() => {
-    if (!protocolDef || !startDate) return [];
-    return protocolDef.events.map(e => ({
-      ...e,
-      date: format(addDays(parseISO(startDate), e.day), 'yyyy-MM-dd'),
-      displayDate: format(addDays(parseISO(startDate), e.day), 'EEE, MMM d'),
-    }));
-  }, [protocolDef, startDate]);
+    if (!protocolDef || !startDatetime) return [];
+    const base = parseISO(startDatetime);
+    return protocolDef.events.map(e => {
+      const dt = addHours(base, e.hours);
+      return {
+        ...e,
+        date:        format(dt, 'yyyy-MM-dd'),
+        displayDate: format(dt, 'EEE, MMM d'),
+        displayTime: format(dt, 'h:mm a'),
+      };
+    });
+  }, [protocolDef, startDatetime]);
 
   function toggleAnimal(id: string) {
     setSelectedIds(prev => {
@@ -316,9 +342,11 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
         updatedAt: now,
       });
 
+      const base = parseISO(startDatetime);
       const events = [];
       for (const animalId of selectedIds) {
         for (const e of protocolDef.events) {
+          const eventDt = addHours(base, e.hours);
           events.push({
             id: crypto.randomUUID(),
             farmId,
@@ -327,7 +355,8 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
             day: e.day,
             eventType: e.eventType,
             label: e.label,
-            scheduledDate: format(addDays(parseISO(startDate), e.day), 'yyyy-MM-dd'),
+            scheduledDate: format(eventDt, 'yyyy-MM-dd'),
+            scheduledTime: format(eventDt, 'HH:mm'),
             status: 'pending' as const,
             createdAt: now,
             updatedAt: now,
@@ -452,19 +481,20 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      {/* ── Step 3: Start date ── */}
+      {/* ── Step 3: Start date + time of first shot ── */}
       {step === 'date' && protocolDef && (
         <div className="space-y-4">
           <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">
-            Set Day 0 (Start Date)
+            When is the first shot? (Day 0)
           </p>
           <Card>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-4 space-y-2">
+              <p className="text-xs text-muted-foreground">Date and time of first injection — all subsequent events will be timed from this moment.</p>
               <Input
-                type="date"
+                type="datetime-local"
                 className="h-12 text-base"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
+                value={startDatetime}
+                onChange={e => setStartDatetime(e.target.value)}
               />
             </CardContent>
           </Card>
@@ -482,10 +512,11 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
                     <span className={`text-xs font-bold px-2 py-0.5 rounded ${m.bgColor} ${m.color} w-20 text-center shrink-0`}>
                       {m.shortLabel}
                     </span>
-                    <span className={`text-sm font-semibold flex-1 ${past ? 'line-through text-muted-foreground' : today ? 'text-amber-700' : ''}`}>
-                      {e.displayDate}
-                    </span>
-                    <span className="text-xs text-muted-foreground">Day {e.day}</span>
+                    <div className={`flex-1 ${past ? 'line-through text-muted-foreground' : today ? 'text-amber-700' : ''}`}>
+                      <span className="text-sm font-semibold">{e.displayDate}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{e.displayTime}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">+{e.hours}h</span>
                   </div>
                 );
               })}
@@ -494,7 +525,7 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
 
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1 h-11" onClick={() => setStep('protocol')}>Back</Button>
-            <Button className="flex-1 h-11" disabled={!startDate} onClick={() => setStep('confirm')}>Next — Confirm</Button>
+            <Button className="flex-1 h-11" disabled={!startDatetime} onClick={() => setStep('confirm')}>Next — Confirm</Button>
           </div>
         </div>
       )}
@@ -510,11 +541,14 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
                 <span className="font-bold">{protocolDef.label}</span>
                 <span className="text-muted-foreground">Cows</span>
                 <span className="font-bold">{selectedIds.size}</span>
-                <span className="text-muted-foreground">Day 0</span>
-                <span className="font-bold">{format(parseISO(startDate), 'EEE, MMM d yyyy')}</span>
-                <span className="text-muted-foreground">AI date</span>
+                <span className="text-muted-foreground">First shot</span>
+                <span className="font-bold">{format(parseISO(startDatetime), 'EEE, MMM d h:mm a')}</span>
+                <span className="text-muted-foreground">Timed AI</span>
                 <span className="font-bold text-primary">
-                  {format(addDays(parseISO(startDate), protocolDef.totalDays), 'EEE, MMM d')}
+                  {(() => {
+                    const aiEvent = scheduledEvents.findLast(e => e.eventType === 'timed-ai');
+                    return aiEvent ? `${aiEvent.displayDate} ${aiEvent.displayTime}` : '—';
+                  })()}
                 </span>
                 <span className="text-muted-foreground">Events created</span>
                 <span className="font-bold">{selectedIds.size * protocolDef.events.length}</span>
