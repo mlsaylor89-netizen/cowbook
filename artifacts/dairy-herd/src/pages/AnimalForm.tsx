@@ -35,6 +35,8 @@ const formSchema = z.object({
   disposition: z.enum(['Active', 'Sold', 'Dead']),
   lactationNumber: z.coerce.number().min(0),
   rfidTag: z.string().optional(),
+  earTattooLeft: z.string().optional(),
+  earTattooRight: z.string().optional(),
   sire: z.string().optional(),
   dam: z.string().optional(),
   birthDate: z.string().optional(),
@@ -90,6 +92,8 @@ export function AnimalForm() {
       disposition: 'Active',
       lactationNumber: 1,
       rfidTag: '',
+      earTattooLeft: '',
+      earTattooRight: '',
       sire: '',
       dam: '',
       birthDate: '',
@@ -133,6 +137,8 @@ export function AnimalForm() {
             disposition: inferDisposition(animal.status),
             lactationNumber: animal.lactationNumber,
             rfidTag: animal.rfidTag || '',
+            earTattooLeft: animal.earTattooLeft || '',
+            earTattooRight: animal.earTattooRight || '',
             sire: animal.sire || '',
             dam: animal.dam || '',
             birthDate: animal.birthDate ? animal.birthDate.slice(0, 10) : '',
@@ -177,6 +183,8 @@ export function AnimalForm() {
         status: derivedStatus,
         lactationNumber: values.lactationNumber,
         rfidTag: values.rfidTag || undefined,
+        earTattooLeft: values.earTattooLeft?.trim() || undefined,
+        earTattooRight: values.earTattooRight?.trim() || undefined,
         sire: values.sire?.trim() || undefined,
         dam: values.dam?.trim() || undefined,
         birthDate: values.birthDate ? new Date(values.birthDate).toISOString() : undefined,
@@ -213,6 +221,8 @@ export function AnimalForm() {
       status: derivedStatus,
       lactationNumber: values.lactationNumber,
       rfidTag: values.rfidTag || undefined,
+      earTattooLeft: values.earTattooLeft?.trim() || undefined,
+      earTattooRight: values.earTattooRight?.trim() || undefined,
       sire: values.sire?.trim() || undefined,
       dam: values.dam?.trim() || undefined,
       birthDate: values.birthDate ? new Date(values.birthDate).toISOString() : undefined,
@@ -508,6 +518,20 @@ export function AnimalForm() {
                   <FormField control={form.control} name="rfidTag" render={({ field }) => (
                     <FormItem>
                       <FormLabel>RFID Tag</FormLabel>
+                      <FormControl><Input className="h-12" placeholder="Optional" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="earTattooLeft" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Left Ear Tattoo</FormLabel>
+                      <FormControl><Input className="h-12" placeholder="Optional" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="earTattooRight" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Right Ear Tattoo</FormLabel>
                       <FormControl><Input className="h-12" placeholder="Optional" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>

@@ -8,6 +8,8 @@ export interface Animal {
   number: string;
   registrationNumber?: string;
   rfidTag?: string;
+  earTattooLeft?: string;
+  earTattooRight?: string;
   breed: string;
   birthDate?: string;       // date of birth
   sire?: string;            // sire name / registration (free text)

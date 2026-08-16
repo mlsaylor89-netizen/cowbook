@@ -158,6 +158,18 @@ export function AnimalDetail() {
                 <p className="font-bold font-mono text-sm">{animal.rfidTag}</p>
               </div>
             )}
+            {animal.earTattooLeft && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Left Ear</p>
+                <p className="font-bold font-mono text-sm">{animal.earTattooLeft}</p>
+              </div>
+            )}
+            {animal.earTattooRight && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Right Ear</p>
+                <p className="font-bold font-mono text-sm">{animal.earTattooRight}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
