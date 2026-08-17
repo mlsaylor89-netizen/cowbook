@@ -452,11 +452,13 @@ export function AnimalDetail() {
         )}
 
         <div className="space-y-3">
-          {/* Unified chronological timeline */}
+          {/* Unified chronological timeline — all event types */}
           {[
-            ...breedings.map(b => ({ type: 'breeding' as const, date: b.date ?? '', item: b })),
-            ...calvings.map(c => ({ type: 'calving'  as const, date: c.calvingDate ?? '', item: c })),
-            ...heats.map(h =>    ({ type: 'heat'     as const, date: h.observedAt ?? '',  item: h })),
+            ...breedings.map(b    => ({ type: 'breeding'    as const, date: b.date ?? '',              item: b })),
+            ...calvings.map(c     => ({ type: 'calving'     as const, date: c.calvingDate ?? '',        item: c })),
+            ...heats.map(h        => ({ type: 'heat'        as const, date: h.observedAt ?? '',         item: h })),
+            ...vaccinations.map(v => ({ type: 'vaccination' as const, date: v.vaccinationDate ?? '',    item: v })),
+            ...healthEvents.map(e => ({ type: 'health'      as const, date: e.date ?? '',               item: e })),
           ]
             .sort((a, b) => {
               const ta = a.date ? new Date(a.date).getTime() : 0;
@@ -482,6 +484,7 @@ export function AnimalDetail() {
                   </Card>
                 );
               }
+
               if (entry.type === 'calving') {
                 const c = entry.item as (typeof calvings)[0];
                 return (
@@ -500,104 +503,78 @@ export function AnimalDetail() {
                   </Card>
                 );
               }
-              // heat
-              const h = entry.item as (typeof heats)[0];
-              const statusLabel = h.status === 'bred' ? 'Bred' : h.status === 'missed' ? 'Dismissed' : 'Pending';
-              const statusColor  = h.status === 'bred' ? 'text-green-600' : h.status === 'missed' ? 'text-muted-foreground' : 'text-amber-600';
-              return (
-                <Card key={`h-${h.id}`}>
-                  <CardContent className="p-3 flex items-start gap-3">
-                    <Thermometer className="h-5 w-5 mt-0.5 text-rose-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold">Heat Observed — {h.breedingType === 'sexed' ? 'Sexed' : 'Conventional'}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {fmt(h.observedAt, 'MMM d, yyyy h:mm a')}
-                        {h.scheduledBreedAt ? <>{' · '}Breed by {fmt(h.scheduledBreedAt, 'h:mm a')}</> : null}
-                      </p>
-                      <span className={`text-xs font-semibold ${statusColor}`}>{statusLabel}</span>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
-                      onClick={() => deleteEvent('heat', h.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })
-          }
-          {breedings.length === 0 && calvings.length === 0 && heats.length === 0 && pregChecks.length === 0 && (
-            <p className="text-muted-foreground text-center py-4 text-sm">No history records.</p>
-          )}
-        </div>
-      </div>
 
-      {/* Vaccinations */}
-      {vaccinations.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Syringe className="h-5 w-5 text-green-600" />
-              <h3 className="text-lg font-bold">Vaccinations</h3>
-            </div>
-            <Link href={`/vaccination?animalId=${animal.id}`}>
-              <Button size="sm" variant="outline">+ Add</Button>
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {vaccinations.map(v => (
-              <Card key={v.id}>
-                <CardContent className="p-3 flex items-start gap-3">
-                  <Syringe className="h-4 w-4 mt-0.5 text-green-600 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold leading-tight">{v.vaccineName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {fmt(v.vaccinationDate, 'MMM d, yyyy')}
-                      {v.manufacturer ? ` · ${v.manufacturer}` : ''}
-                      {v.lotNumber ? ` · Lot ${v.lotNumber}` : ''}
-                    </p>
-                    {v.followUpRequired && v.followUpDate && (
-                      <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" />
-                        Booster due {fmt(v.followUpDate, 'MMM d, yyyy')}
-                      </p>
-                    )}
-                    {v.notes && <p className="text-xs text-muted-foreground mt-0.5">{v.notes}</p>}
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
-                    onClick={() => deleteVaccination(v.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+              if (entry.type === 'heat') {
+                const h = entry.item as (typeof heats)[0];
+                const statusLabel = h.status === 'bred' ? 'Bred' : h.status === 'missed' ? 'Dismissed' : 'Pending';
+                const statusColor  = h.status === 'bred' ? 'text-green-600' : h.status === 'missed' ? 'text-muted-foreground' : 'text-amber-600';
+                return (
+                  <Card key={`h-${h.id}`}>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <Thermometer className="h-5 w-5 mt-0.5 text-rose-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold">Heat Observed — {h.breedingType === 'sexed' ? 'Sexed' : 'Conventional'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {fmt(h.observedAt, 'MMM d, yyyy h:mm a')}
+                          {h.scheduledBreedAt ? <>{' · '}Breed by {fmt(h.scheduledBreedAt, 'h:mm a')}</> : null}
+                        </p>
+                        <span className={`text-xs font-semibold ${statusColor}`}>{statusLabel}</span>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
+                        onClick={() => deleteEvent('heat', h.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              }
 
-      {/* Health Events (wean, hoof trim, BCS, dehorn) */}
-      {healthEvents.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-lg font-bold">Health Events</h3>
-          </div>
-          <div className="space-y-2">
-            {healthEvents.map(ev => {
-              const meta: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-                'wean':      { label: 'Weaned',    icon: <Milk className="h-4 w-4 text-orange-500" />,   color: 'text-orange-700' },
-                'hoof-trim': { label: 'Hoof Trim', icon: <Scissors className="h-4 w-4 text-amber-600" />, color: 'text-amber-700' },
-                'bcs':       { label: 'BCS',       icon: <BarChart3 className="h-4 w-4 text-sky-600" />,  color: 'text-sky-700' },
-                'dehorn':    { label: 'Dehorned',  icon: <AlertTriangle className="h-4 w-4 text-red-500" />, color: 'text-red-700' },
+              if (entry.type === 'vaccination') {
+                const v = entry.item as (typeof vaccinations)[0];
+                return (
+                  <Card key={`v-${v.id}`}>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <Syringe className="h-5 w-5 mt-0.5 text-green-600 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold">{v.vaccineName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {fmt(v.vaccinationDate, 'MMM d, yyyy')}
+                          {v.manufacturer ? ` · ${v.manufacturer}` : ''}
+                          {v.lotNumber ? ` · Lot ${v.lotNumber}` : ''}
+                        </p>
+                        {v.followUpRequired && v.followUpDate && (
+                          <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            Booster due {fmt(v.followUpDate, 'MMM d, yyyy')}
+                          </p>
+                        )}
+                        {v.notes && <p className="text-xs text-muted-foreground mt-0.5">{v.notes}</p>}
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
+                        onClick={() => deleteVaccination(v.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              // health event (wean / hoof-trim / bcs / dehorn)
+              const ev = entry.item as (typeof healthEvents)[0];
+              const healthMeta: Record<string, { label: string; icon: React.ReactNode }> = {
+                'wean':      { label: 'Weaned',    icon: <Milk     className="h-5 w-5 mt-0.5 text-orange-500 shrink-0" /> },
+                'hoof-trim': { label: 'Hoof Trim', icon: <Scissors className="h-5 w-5 mt-0.5 text-amber-600 shrink-0" /> },
+                'bcs':       { label: 'Body Condition Score', icon: <BarChart3 className="h-5 w-5 mt-0.5 text-sky-600 shrink-0" /> },
+                'dehorn':    { label: 'Dehorned',  icon: <AlertTriangle className="h-5 w-5 mt-0.5 text-red-500 shrink-0" /> },
               };
-              const m = meta[ev.type] ?? { label: ev.type, icon: <Activity className="h-4 w-4" />, color: '' };
+              const hm = healthMeta[ev.type] ?? { label: ev.type, icon: <Activity className="h-5 w-5 mt-0.5 shrink-0" /> };
               return (
-                <Card key={ev.id}>
+                <Card key={`e-${ev.id}`}>
                   <CardContent className="p-3 flex items-start gap-3">
-                    <span className="mt-0.5 shrink-0">{m.icon}</span>
+                    {hm.icon}
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold leading-tight">
-                        {m.label}
-                        {ev.type === 'bcs' && ev.value ? ` — ${ev.value}` : ''}
+                      <p className="font-bold">
+                        {hm.label}{ev.type === 'bcs' && ev.value ? ` — ${ev.value}` : ''}
                       </p>
                       <p className="text-sm text-muted-foreground">{fmt(ev.date, 'MMM d, yyyy')}</p>
                       {ev.notes && <p className="text-xs text-muted-foreground mt-0.5">{ev.notes}</p>}
@@ -609,10 +586,14 @@ export function AnimalDetail() {
                   </CardContent>
                 </Card>
               );
-            })}
-          </div>
+            })
+          }
+          {breedings.length === 0 && calvings.length === 0 && heats.length === 0 &&
+           vaccinations.length === 0 && healthEvents.length === 0 && pregChecks.length === 0 && (
+            <p className="text-muted-foreground text-center py-4 text-sm">No history records yet.</p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Treatments */}
       <TreatmentsSection animalId={animal.id} treatments={treatments} />
