@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, getWatchForHeatList } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer } from 'lucide-react';
+import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer, CalendarDays } from 'lucide-react';
 import { HeatAlerts } from '@/pages/HeatAlerts';
 import { SyncEventWidget } from '@/pages/SyncEventWidget';
 import { seedDemoData } from '@/db/seed';
@@ -47,6 +47,10 @@ export function Home() {
       return d.quantityOnHand <= (d.lowStockThreshold ?? 1);
     });
 
+    const today = new Date().toISOString().slice(0, 10);
+    const syncPending = await db.syncEvents.where('status').equals('pending').toArray();
+    const syncDueCount = syncPending.filter(e => e.scheduledDate <= today).length;
+
     return {
       summary: getHerdSummary(animals, settings),
       pregCheck: getPregCheckList(animals, breedings, pregChecks, settings),
@@ -57,6 +61,7 @@ export function Home() {
       treatments: getTreatmentFollowUp(treatments, animals),
       watchHeat: getWatchForHeatList(animals, breedings, heats),
       lowDrugs,
+      syncDueCount,
     };
   });
 
@@ -158,12 +163,6 @@ export function Home() {
             href="/checklist/preg-check"
           />
           <ChecklistCard
-            title="Fresh Cow Check"
-            count={data.fresh.length}
-            icon={<Activity className="h-5 w-5 text-blue-600" />}
-            href="/checklist/fresh-cow"
-          />
-          <ChecklistCard
             title="Breeding Attention"
             count={data.breedingAttention.length}
             icon={<HeartPulse className="h-5 w-5 text-destructive" />}
@@ -196,6 +195,14 @@ export function Home() {
             icon={<Thermometer className="h-5 w-5 text-rose-500" />}
             href="/checklist/watch-heat"
             alert={data.watchHeat.length > 0}
+          />
+          <ChecklistCard
+            title="Sync Protocols"
+            count={data.syncDueCount}
+            subtitle={data.syncDueCount > 0 ? 'Events due today or overdue' : undefined}
+            icon={<CalendarDays className="h-5 w-5 text-primary" />}
+            href="/sync-protocol"
+            alert={data.syncDueCount > 0}
           />
         </div>
       </div>

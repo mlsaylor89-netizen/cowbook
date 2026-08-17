@@ -20,7 +20,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Search, Check, SkipForward, Plus, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Search, Check, SkipForward, Plus, CalendarDays, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -132,6 +132,15 @@ function EventList() {
     });
   }
 
+  async function removeAnimalFromBatch(animalId: string, batchId: string, animalLabel: string) {
+    if (!confirm(`Remove ${animalLabel} from this synch protocol? All their remaining steps will be deleted.`)) return;
+    const toDelete = (await db.syncEvents
+      .where('batchId').equals(batchId)
+      .filter(e => e.animalId === animalId && e.status === 'pending')
+      .primaryKeys()) as string[];
+    await db.syncEvents.bulkDelete(toDelete);
+  }
+
   function EventRow({ event }: { event: typeof events[0] }) {
     const animal = animalMap.get(event.animalId);
     const meta   = EVENT_META[event.eventType];
@@ -237,11 +246,41 @@ function EventList() {
                   </div>
                   {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                 </button>
-                {isOpen && (
-                  <CardContent className="px-3 pb-3 pt-0 divide-y divide-border border-t">
-                    {batchEvents.map(e => <EventRow key={e.id} event={e} />)}
-                  </CardContent>
-                )}
+                {isOpen && (() => {
+                  // Group pending events by animal so each animal gets one row with a remove button
+                  const byAnimal = new Map<string, typeof batchEvents>();
+                  for (const e of batchEvents) {
+                    if (!byAnimal.has(e.animalId)) byAnimal.set(e.animalId, []);
+                    byAnimal.get(e.animalId)!.push(e);
+                  }
+                  return (
+                    <CardContent className="px-3 pb-3 pt-0 border-t divide-y divide-border">
+                      {[...byAnimal.entries()].map(([animalId, animalEvents]) => {
+                        const animal = animalMap.get(animalId);
+                        const label = animal ? animalLabel(animal) : animalId;
+                        return (
+                          <div key={animalId}>
+                            {/* Animal header with remove button */}
+                            <div className="flex items-center justify-between py-2">
+                              <span className="text-sm font-semibold">{label}</span>
+                              <button
+                                onClick={() => removeAnimalFromBatch(animalId, batchId, label)}
+                                className="text-destructive hover:text-destructive/80 p-1 rounded transition-colors"
+                                title="Remove from synch"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            {/* That animal's individual events */}
+                            <div className="pl-2 divide-y divide-border/50">
+                              {animalEvents.map(e => <EventRow key={e.id} event={e} />)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  );
+                })()}
               </Card>
             );
           })}
