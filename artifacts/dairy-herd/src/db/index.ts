@@ -299,6 +299,35 @@ export interface ETRecipientRecord {
   updatedAt: string;
 }
 
+export interface VaccinationRecord {
+  id: string;
+  animalId: string;
+  farmId: string;
+  vaccineName: string;
+  vaccinationDate: string;    // ISO date string
+  manufacturer?: string;
+  lotNumber?: string;
+  followUpRequired: boolean;
+  followUpDate?: string;      // ISO date string
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type HealthEventType = 'wean' | 'hoof-trim' | 'bcs' | 'dehorn';
+
+export interface HealthEvent {
+  id: string;
+  animalId: string;
+  farmId: string;
+  type: HealthEventType;
+  date: string;               // ISO date string
+  value?: string;             // BCS score, dehorn method, etc.
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class DairyHerdDB extends Dexie {
   animals!: Table<Animal, string>;
   breedings!: Table<Breeding, string>;
@@ -318,6 +347,8 @@ export class DairyHerdDB extends Dexie {
   syncEvents!: Table<SyncEvent, string>;
   flushRecords!: Table<FlushRecord, string>;
   etRecipients!: Table<ETRecipientRecord, string>;
+  vaccinations!: Table<VaccinationRecord, string>;
+  healthEvents!: Table<HealthEvent, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -368,6 +399,11 @@ export class DairyHerdDB extends Dexie {
     // v11: ET recipient tracking
     this.version(11).stores({
       etRecipients: 'id, farmId, animalId, status, transferDate',
+    });
+    // v12: vaccinations + general health events (wean, hoof trim, BCS, dehorn)
+    this.version(12).stores({
+      vaccinations: 'id, animalId, farmId, vaccinationDate, followUpDate',
+      healthEvents:  'id, animalId, farmId, type, date',
     });
   }
 }

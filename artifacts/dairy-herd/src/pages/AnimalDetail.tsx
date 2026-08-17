@@ -5,8 +5,10 @@ import { getDIM } from '@/db/computed';
 import { Link, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,27 +56,89 @@ export function AnimalDetail() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Inline quick-log panel state
+  const [activePanel, setActivePanel] = useState<'wean' | 'hoof-trim' | 'bcs' | 'dehorn' | null>(null);
+  const [panelDate, setPanelDate]     = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [panelValue, setPanelValue]   = useState('');
+  const [panelNotes, setPanelNotes]   = useState('');
+  const [panelSaving, setPanelSaving] = useState(false);
+
   const data = useLiveQuery(async () => {
     if (!id) return null;
     const animal = await db.animals.get(id);
     if (!animal) return null;
 
-    const breedings = await db.breedings.where('animalId').equals(id).reverse().sortBy('date');
-    const calvings = await db.calvings.where('animalId').equals(id).reverse().sortBy('calvingDate');
-    const treatments = await db.treatments.where('animalId').equals(id).reverse().sortBy('date');
-    const pregChecks = await db.pregnancyChecks.where('animalId').equals(id).reverse().sortBy('checkDate');
-    const notes = await db.animalNotes.where('animalId').equals(id).reverse().sortBy('createdAt');
-    const classifications = await db.classifications.where('animalId').equals(id).reverse().sortBy('date');
-    const heats = await db.heats.where('animalId').equals(id).reverse().sortBy('observedAt');
+    const [breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents] =
+      await Promise.all([
+        db.breedings.where('animalId').equals(id).reverse().sortBy('date'),
+        db.calvings.where('animalId').equals(id).reverse().sortBy('calvingDate'),
+        db.treatments.where('animalId').equals(id).reverse().sortBy('date'),
+        db.pregnancyChecks.where('animalId').equals(id).reverse().sortBy('checkDate'),
+        db.animalNotes.where('animalId').equals(id).reverse().sortBy('createdAt'),
+        db.classifications.where('animalId').equals(id).reverse().sortBy('date'),
+        db.heats.where('animalId').equals(id).reverse().sortBy('observedAt'),
+        db.vaccinations.where('animalId').equals(id).reverse().sortBy('vaccinationDate'),
+        db.healthEvents.where('animalId').equals(id).reverse().sortBy('date'),
+      ]);
 
-    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats };
+    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents };
   }, [id]);
 
   if (data === undefined) return <div className="p-4">Loading...</div>;
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
-  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats } = data;
+  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents } = data;
   const dim = getDIM(animal);
+
+  function openPanel(panel: typeof activePanel) {
+    setActivePanel(panel);
+    setPanelDate(format(new Date(), 'yyyy-MM-dd'));
+    setPanelValue('');
+    setPanelNotes('');
+  }
+
+  async function submitHealthEvent() {
+    if (!id || !activePanel) return;
+    setPanelSaving(true);
+    try {
+      const now = new Date().toISOString();
+      await db.healthEvents.add({
+        id: crypto.randomUUID(),
+        animalId: id,
+        farmId: animal.farmId ?? '',
+        type: activePanel,
+        date: new Date(panelDate + 'T12:00:00').toISOString(),
+        value: panelValue.trim() || undefined,
+        notes: panelNotes.trim() || undefined,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const labels: Record<string, string> = {
+        'wean': 'Weaning recorded',
+        'hoof-trim': 'Hoof trim recorded',
+        'bcs': 'BCS recorded',
+        'dehorn': 'Dehorn recorded',
+      };
+      toast({ title: labels[activePanel] ?? 'Event recorded' });
+      setActivePanel(null);
+    } catch {
+      toast({ title: 'Error saving', variant: 'destructive' });
+    } finally {
+      setPanelSaving(false);
+    }
+  }
+
+  async function deleteVaccination(vacId: string) {
+    if (!confirm('Remove this vaccination record? This cannot be undone.')) return;
+    await db.vaccinations.delete(vacId);
+    toast({ title: 'Vaccination removed' });
+  }
+
+  async function deleteHealthEvent(evId: string) {
+    if (!confirm('Remove this record? This cannot be undone.')) return;
+    await db.healthEvents.delete(evId);
+    toast({ title: 'Record removed' });
+  }
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -171,32 +235,136 @@ export function AnimalDetail() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Link href={`/heat?animalId=${animal.id}`} className="block">
-          <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
-            <Thermometer className="h-4 w-4 mr-2 text-rose-500" /> Heat
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-0.5">Actions</p>
+        <div className="grid grid-cols-3 gap-2">
+          <Link href={`/heat?animalId=${animal.id}`} className="block">
+            <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
+              <Thermometer className="h-4 w-4 text-rose-500" />
+              <span>Heat</span>
+            </Button>
+          </Link>
+          <Link href={`/breeding?animalId=${animal.id}`} className="block">
+            <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
+              <Heart className="h-4 w-4 text-destructive" />
+              <span>Breed</span>
+            </Button>
+          </Link>
+          <Link href={`/calving?animalId=${animal.id}`} className="block">
+            <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
+              <Baby className="h-4 w-4 text-primary" />
+              <span>Calve</span>
+            </Button>
+          </Link>
+          <Link href={`/preg-check?animalId=${animal.id}`} className="block">
+            <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
+              <Activity className="h-4 w-4 text-blue-600" />
+              <span>Preg Check</span>
+            </Button>
+          </Link>
+          <Link href={`/treatment?animalId=${animal.id}`} className="block">
+            <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
+              <Droplet className="h-4 w-4 text-purple-600" />
+              <span>Treat</span>
+            </Button>
+          </Link>
+          <Link href={`/vaccination?animalId=${animal.id}`} className="block">
+            <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
+              <Syringe className="h-4 w-4 text-green-600" />
+              <span>Vaccinate</span>
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            className={`w-full h-14 flex-col gap-1 border-border text-xs ${activePanel === 'hoof-trim' ? 'bg-accent/20 border-accent' : 'bg-card hover:bg-accent/10'}`}
+            onClick={() => activePanel === 'hoof-trim' ? setActivePanel(null) : openPanel('hoof-trim')}
+          >
+            <Scissors className="h-4 w-4 text-amber-600" />
+            <span>Hoof Trim</span>
           </Button>
-        </Link>
-        <Link href={`/breeding?animalId=${animal.id}`} className="block">
-          <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
-            <Heart className="h-4 w-4 mr-2 text-destructive" /> Breed
+          <Button
+            variant="outline"
+            className={`w-full h-14 flex-col gap-1 border-border text-xs ${activePanel === 'bcs' ? 'bg-accent/20 border-accent' : 'bg-card hover:bg-accent/10'}`}
+            onClick={() => activePanel === 'bcs' ? setActivePanel(null) : openPanel('bcs')}
+          >
+            <BarChart3 className="h-4 w-4 text-sky-600" />
+            <span>BCS</span>
           </Button>
-        </Link>
-        <Link href={`/calving?animalId=${animal.id}`} className="block">
-          <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
-            <Baby className="h-4 w-4 mr-2 text-primary" /> Calve
+          <Button
+            variant="outline"
+            className={`w-full h-14 flex-col gap-1 border-border text-xs ${activePanel === 'wean' ? 'bg-accent/20 border-accent' : 'bg-card hover:bg-accent/10'}`}
+            onClick={() => activePanel === 'wean' ? setActivePanel(null) : openPanel('wean')}
+          >
+            <Milk className="h-4 w-4 text-orange-500" />
+            <span>Wean</span>
           </Button>
-        </Link>
-        <Link href={`/preg-check?animalId=${animal.id}`} className="block">
-          <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
-            <Activity className="h-4 w-4 mr-2 text-blue-600" /> Preg Check
-          </Button>
-        </Link>
-        <Link href={`/treatment?animalId=${animal.id}`} className="block">
-          <Button variant="outline" className="w-full h-14 bg-card hover:bg-accent/10 border-border">
-            <Droplet className="h-4 w-4 mr-2 text-purple-600" /> Treat
-          </Button>
-        </Link>
+        </div>
+
+        {/* Inline quick-log panel */}
+        {activePanel && (
+          <Card className="border-accent/50">
+            <CardContent className="p-4 space-y-3">
+              <p className="font-bold text-sm capitalize">
+                {activePanel === 'hoof-trim' ? 'Hoof Trim' : activePanel === 'bcs' ? 'Body Condition Score' : activePanel === 'wean' ? 'Record Weaning' : 'Dehorn'}
+              </p>
+
+              {activePanel === 'bcs' && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm">BCS Score (1–9)</Label>
+                  <select
+                    value={panelValue}
+                    onChange={e => setPanelValue(e.target.value)}
+                    required
+                    className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Select score…</option>
+                    {['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9'].map(v => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="text-sm">Date</Label>
+                <Input
+                  type="date"
+                  className="h-11 text-base"
+                  value={panelDate}
+                  onChange={e => setPanelDate(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm">Notes <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Textarea
+                  className="text-base min-h-[60px] resize-none"
+                  placeholder={
+                    activePanel === 'hoof-trim' ? 'Trimmer, condition, issues found…'
+                    : activePanel === 'bcs' ? 'Observer, body area notes…'
+                    : activePanel === 'wean' ? 'Weaning weight, method…'
+                    : 'Method, notes…'
+                  }
+                  value={panelNotes}
+                  onChange={e => setPanelNotes(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 h-11"
+                  onClick={submitHealthEvent}
+                  disabled={panelSaving || (activePanel === 'bcs' && !panelValue)}
+                >
+                  {panelSaving ? 'Saving…' : 'Save'}
+                </Button>
+                <Button variant="outline" className="h-11 px-4" onClick={() => setActivePanel(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Info Card */}
@@ -362,6 +530,89 @@ export function AnimalDetail() {
           )}
         </div>
       </div>
+
+      {/* Vaccinations */}
+      {vaccinations.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Syringe className="h-5 w-5 text-green-600" />
+              <h3 className="text-lg font-bold">Vaccinations</h3>
+            </div>
+            <Link href={`/vaccination?animalId=${animal.id}`}>
+              <Button size="sm" variant="outline">+ Add</Button>
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {vaccinations.map(v => (
+              <Card key={v.id}>
+                <CardContent className="p-3 flex items-start gap-3">
+                  <Syringe className="h-4 w-4 mt-0.5 text-green-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold leading-tight">{v.vaccineName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {fmt(v.vaccinationDate, 'MMM d, yyyy')}
+                      {v.manufacturer ? ` · ${v.manufacturer}` : ''}
+                      {v.lotNumber ? ` · Lot ${v.lotNumber}` : ''}
+                    </p>
+                    {v.followUpRequired && v.followUpDate && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        Booster due {fmt(v.followUpDate, 'MMM d, yyyy')}
+                      </p>
+                    )}
+                    {v.notes && <p className="text-xs text-muted-foreground mt-0.5">{v.notes}</p>}
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
+                    onClick={() => deleteVaccination(v.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Health Events (wean, hoof trim, BCS, dehorn) */}
+      {healthEvents.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Award className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-bold">Health Events</h3>
+          </div>
+          <div className="space-y-2">
+            {healthEvents.map(ev => {
+              const meta: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+                'wean':      { label: 'Weaned',    icon: <Milk className="h-4 w-4 text-orange-500" />,   color: 'text-orange-700' },
+                'hoof-trim': { label: 'Hoof Trim', icon: <Scissors className="h-4 w-4 text-amber-600" />, color: 'text-amber-700' },
+                'bcs':       { label: 'BCS',       icon: <BarChart3 className="h-4 w-4 text-sky-600" />,  color: 'text-sky-700' },
+                'dehorn':    { label: 'Dehorned',  icon: <AlertTriangle className="h-4 w-4 text-red-500" />, color: 'text-red-700' },
+              };
+              const m = meta[ev.type] ?? { label: ev.type, icon: <Activity className="h-4 w-4" />, color: '' };
+              return (
+                <Card key={ev.id}>
+                  <CardContent className="p-3 flex items-start gap-3">
+                    <span className="mt-0.5 shrink-0">{m.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold leading-tight">
+                        {m.label}
+                        {ev.type === 'bcs' && ev.value ? ` — ${ev.value}` : ''}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{fmt(ev.date, 'MMM d, yyyy')}</p>
+                      {ev.notes && <p className="text-xs text-muted-foreground mt-0.5">{ev.notes}</p>}
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 -mr-1"
+                      onClick={() => deleteHealthEvent(ev.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Treatments */}
       <TreatmentsSection animalId={animal.id} treatments={treatments} />

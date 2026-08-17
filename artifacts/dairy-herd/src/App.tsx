@@ -45,6 +45,7 @@ import { FlushHistory } from '@/pages/FlushHistory';
 import { FlushForm } from '@/pages/FlushForm';
 import { ETRecipientList } from '@/pages/ETRecipientList';
 import { ETRecipientForm } from '@/pages/ETRecipientForm';
+import { VaccinationForm } from '@/pages/VaccinationForm';
 
 // Firebase auth + sync
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -154,6 +155,7 @@ function Router() {
 
           <Route path="/et-recipients" component={ETRecipientList} />
           <Route path="/et-recipients/new" component={ETRecipientForm} />
+          <Route path="/vaccination" component={VaccinationForm} />
 
           <Route path="/more" component={MoreMenu} />
           <Route path="/reports" component={Reports} />
