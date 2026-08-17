@@ -306,7 +306,7 @@ export function AnimalDetail() {
 
               {activePanel === 'bcs' && (
                 <div className="space-y-1.5">
-                  <Label className="text-sm">BCS Score (1–9)</Label>
+                  <Label className="text-sm">BCS Score (1–5)</Label>
                   <select
                     value={panelValue}
                     onChange={e => setPanelValue(e.target.value)}
