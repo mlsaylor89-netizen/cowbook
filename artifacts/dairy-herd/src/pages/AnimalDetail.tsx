@@ -2,8 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, useRef } from 'react';
 import { db } from '@/db';
 import { getDIM } from '@/db/computed';
-import { Link, useRoute } from 'wouter';
+import { Link, useLocation, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -236,7 +237,6 @@ export function AnimalDetail() {
 
       {/* Quick Actions */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-0.5">Actions</p>
         <div className="grid grid-cols-3 gap-2">
           <Link href={`/heat?animalId=${animal.id}`} className="block">
             <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
@@ -268,36 +268,32 @@ export function AnimalDetail() {
               <span>Treat</span>
             </Button>
           </Link>
-          <Link href={`/vaccination?animalId=${animal.id}`} className="block">
-            <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
-              <Syringe className="h-4 w-4 text-green-600" />
-              <span>Vaccinate</span>
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            className={`w-full h-14 flex-col gap-1 border-border text-xs ${activePanel === 'hoof-trim' ? 'bg-accent/20 border-accent' : 'bg-card hover:bg-accent/10'}`}
-            onClick={() => activePanel === 'hoof-trim' ? setActivePanel(null) : openPanel('hoof-trim')}
-          >
-            <Scissors className="h-4 w-4 text-amber-600" />
-            <span>Hoof Trim</span>
-          </Button>
-          <Button
-            variant="outline"
-            className={`w-full h-14 flex-col gap-1 border-border text-xs ${activePanel === 'bcs' ? 'bg-accent/20 border-accent' : 'bg-card hover:bg-accent/10'}`}
-            onClick={() => activePanel === 'bcs' ? setActivePanel(null) : openPanel('bcs')}
-          >
-            <BarChart3 className="h-4 w-4 text-sky-600" />
-            <span>BCS</span>
-          </Button>
-          <Button
-            variant="outline"
-            className={`w-full h-14 flex-col gap-1 border-border text-xs ${activePanel === 'wean' ? 'bg-accent/20 border-accent' : 'bg-card hover:bg-accent/10'}`}
-            onClick={() => activePanel === 'wean' ? setActivePanel(null) : openPanel('wean')}
-          >
-            <Milk className="h-4 w-4 text-orange-500" />
-            <span>Wean</span>
-          </Button>
+
+          {/* Actions dropdown — Vaccinate, Hoof Trim, BCS, Wean */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <span>Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Health &amp; Management</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => { window.location.href = `/vaccination?animalId=${animal.id}`; }}>
+                <Syringe className="h-4 w-4 mr-2 text-green-600" /> Vaccinate
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('hoof-trim')}>
+                <Scissors className="h-4 w-4 mr-2 text-amber-600" /> Hoof Trim
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('bcs')}>
+                <BarChart3 className="h-4 w-4 mr-2 text-sky-600" /> Body Condition Score
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('wean')}>
+                <Milk className="h-4 w-4 mr-2 text-orange-500" /> Wean
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Inline quick-log panel */}
