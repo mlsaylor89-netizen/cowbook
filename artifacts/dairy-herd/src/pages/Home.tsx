@@ -1,5 +1,6 @@
 import { Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { format, parseISO, isToday, isBefore } from 'date-fns';
 import { db } from '@/db';
 import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, getWatchForHeatList } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +51,9 @@ export function Home() {
     const today = new Date().toISOString().slice(0, 10);
     const syncPending = await db.syncEvents.where('status').equals('pending').toArray();
     const syncDueCount = syncPending.filter(e => e.scheduledDate <= today).length;
+    const syncAnimalCount = new Set(syncPending.map(e => e.animalId)).size;
+    const sortedDates = syncPending.map(e => e.scheduledDate).sort();
+    const syncNextDate = sortedDates.length > 0 ? sortedDates[0] : null;
 
     return {
       summary: getHerdSummary(animals, settings),
@@ -62,6 +66,8 @@ export function Home() {
       watchHeat: getWatchForHeatList(animals, breedings, heats),
       lowDrugs,
       syncDueCount,
+      syncAnimalCount,
+      syncNextDate,
     };
   });
 
@@ -197,9 +203,18 @@ export function Home() {
             alert={data.watchHeat.length > 0}
           />
           <ChecklistCard
-            title="Sync Protocols"
+            title="Sync Set Ups"
             count={data.syncDueCount}
-            subtitle={data.syncDueCount > 0 ? 'Events due today or overdue' : undefined}
+            subtitle={`${data.syncAnimalCount} ${data.syncAnimalCount === 1 ? 'animal' : 'animals'} on program`}
+            detail={
+              data.syncNextDate
+                ? isToday(parseISO(data.syncNextDate))
+                  ? 'Next shot: today'
+                  : isBefore(parseISO(data.syncNextDate), new Date())
+                  ? `Overdue since ${format(parseISO(data.syncNextDate), 'MMM d')}`
+                  : `Next shot: ${format(parseISO(data.syncNextDate), 'MMM d')}`
+                : undefined
+            }
             icon={<CalendarDays className="h-5 w-5 text-primary" />}
             href="/sync-protocol"
             alert={data.syncDueCount > 0}
@@ -221,8 +236,8 @@ function SummaryCard({ title, value }: { title: string; value: string | number }
   );
 }
 
-function ChecklistCard({ title, count, icon, href, subtitle, alert }: {
-  title: string; count: number; icon: React.ReactNode; href: string; subtitle?: string; alert?: boolean;
+function ChecklistCard({ title, count, icon, href, subtitle, detail, alert }: {
+  title: string; count: number; icon: React.ReactNode; href: string; subtitle?: string; detail?: string; alert?: boolean;
 }) {
   return (
     <Link href={href} className="block active-elevate hover-elevate">
@@ -235,10 +250,11 @@ function ChecklistCard({ title, count, icon, href, subtitle, alert }: {
             <div>
               <p className="font-semibold text-foreground">{title}</p>
               {subtitle ? (
-                <p className="text-sm font-medium text-destructive">{subtitle}</p>
+                <p className={`text-sm font-medium ${alert ? 'text-destructive' : 'text-muted-foreground'}`}>{subtitle}</p>
               ) : (
                 <p className="text-sm text-muted-foreground">{count} {count === 1 ? 'animal' : 'animals'}</p>
               )}
+              {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
             </div>
           </div>
           <div className="flex items-center gap-2">
