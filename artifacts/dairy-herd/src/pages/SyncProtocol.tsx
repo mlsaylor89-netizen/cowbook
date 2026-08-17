@@ -141,6 +141,16 @@ function EventList() {
     await db.syncEvents.bulkDelete(toDelete);
   }
 
+  async function deleteBatch(batchId: string, batchLabel: string) {
+    if (!confirm(`Delete the entire "${batchLabel}" group? All remaining events for every animal in this batch will be removed.`)) return;
+    const toDelete = (await db.syncEvents
+      .where('batchId').equals(batchId)
+      .filter(e => e.status === 'pending')
+      .primaryKeys()) as string[];
+    await db.syncEvents.bulkDelete(toDelete);
+    await db.syncProtocolBatches.delete(batchId);
+  }
+
   function EventRow({ event }: { event: typeof events[0] }) {
     const animal = animalMap.get(event.animalId);
     const meta   = EVENT_META[event.eventType];
@@ -228,24 +238,34 @@ function EventList() {
             const def    = batch ? PROTOCOL_DEFS[batch.protocol] : null;
             const isOpen = expandedBatches.has(batchId);
             const nextEvent = batchEvents[0];
+            const batchLabel = def?.label ?? batch?.protocol ?? batchId;
             return (
               <Card key={batchId} className="shadow-sm">
-                <button
-                  className="w-full p-3 flex items-center justify-between"
-                  onClick={() => toggleBatch(batchId)}
-                >
-                  <div className="text-left">
-                    <p className="font-semibold text-sm">{def?.label ?? batch?.protocol}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Started {batch?.startDate} · {batchEvents.length} events left ·
-                      Next: <span className="font-medium">
-                        {format(parseISO(nextEvent.scheduledDate), 'MMM d')}
-                        {nextEvent.scheduledTime && ` ${(() => { const [h,m]=nextEvent.scheduledTime.split(':').map(Number); const d=new Date(); d.setHours(h,m,0); return format(d,'h:mm a'); })()}`}
-                      </span>
-                    </p>
-                  </div>
-                  {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                </button>
+                <div className="flex items-center">
+                  <button
+                    className="flex-1 p-3 flex items-center justify-between text-left"
+                    onClick={() => toggleBatch(batchId)}
+                  >
+                    <div>
+                      <p className="font-semibold text-sm">{batchLabel}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Started {batch?.startDate} · {batchEvents.length} events left ·
+                        Next: <span className="font-medium">
+                          {format(parseISO(nextEvent.scheduledDate), 'MMM d')}
+                          {nextEvent.scheduledTime && ` ${(() => { const [h,m]=nextEvent.scheduledTime.split(':').map(Number); const d=new Date(); d.setHours(h,m,0); return format(d,'h:mm a'); })()}`}
+                        </span>
+                      </p>
+                    </div>
+                    {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  <button
+                    onClick={() => deleteBatch(batchId, batchLabel)}
+                    className="p-3 text-destructive hover:text-destructive/70 transition-colors shrink-0"
+                    title="Delete entire group"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
                 {isOpen && (() => {
                   // Group pending events by animal so each animal gets one row with a remove button
                   const byAnimal = new Map<string, typeof batchEvents>();
