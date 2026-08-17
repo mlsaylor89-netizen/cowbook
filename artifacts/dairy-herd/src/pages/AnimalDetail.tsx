@@ -318,7 +318,7 @@ export function AnimalDetail() {
                     className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="">Select score…</option>
-                    {['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9'].map(v => (
+                    {['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'].map(v => (
                       <option key={v} value={v}>{v}</option>
                     ))}
                   </select>
