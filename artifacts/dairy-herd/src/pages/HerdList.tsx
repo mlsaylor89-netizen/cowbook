@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/useAuth';
 
 type SortMode = 'name' | 'number';
+type GroupFilter = 'all' | 'cows' | 'heifers';
 function getSavedSort(): SortMode {
   return (localStorage.getItem('herdSort') as SortMode) ?? 'name';
 }
@@ -54,6 +55,7 @@ async function deleteAnimals(ids: string[]) {
 export function HerdList() {
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>(getSavedSort);
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -83,11 +85,17 @@ export function HerdList() {
   }, [search]);
 
   const sorted = animals
-    ? [...animals].sort((a, b) =>
-        sortMode === 'number'
-          ? a.number.localeCompare(b.number, undefined, { numeric: true })
-          : (a.barnName || a.name).localeCompare(b.barnName || b.name)
-      )
+    ? [...animals]
+        .filter(a => {
+          if (groupFilter === 'heifers') return lactStat(a) === 'Heifer';
+          if (groupFilter === 'cows') return lactStat(a) !== 'Heifer';
+          return true;
+        })
+        .sort((a, b) =>
+          sortMode === 'number'
+            ? a.number.localeCompare(b.number, undefined, { numeric: true })
+            : (a.barnName || a.name).localeCompare(b.barnName || b.name)
+        )
     : undefined;
 
   function exitSelectMode() {
@@ -166,6 +174,23 @@ export function HerdList() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+      </div>
+
+      {/* Group filter tabs */}
+      <div className="flex rounded-lg border bg-card p-1 gap-1">
+        {(['all', 'cows', 'heifers'] as GroupFilter[]).map(f => (
+          <button
+            key={f}
+            onClick={() => setGroupFilter(f)}
+            className={`flex-1 rounded-md py-2 text-sm font-semibold capitalize transition-colors ${
+              groupFilter === f
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {f === 'all' ? 'All' : f === 'cows' ? 'Cow Herd' : 'Heifers'}
+          </button>
+        ))}
       </div>
 
       {/* Select-all bar */}
