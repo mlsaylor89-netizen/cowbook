@@ -83,21 +83,22 @@ export function AnimalDetail() {
         db.protocolCompletions.where('animalId').equals(id).reverse().sortBy('date'),
       ]);
 
-    // Attach protocol names to completions
-    const protocolNames: Record<string, string> = {};
+    // Load full protocol objects keyed by id (for expand view)
+    const protocolMap: Record<string, import('@/db').Protocol> = {};
     const uniqueIds = [...new Set(protocolCompletions.map(c => c.protocolId))];
     await Promise.all(uniqueIds.map(async pid => {
       const p = await db.protocols.get(pid);
-      if (p) protocolNames[pid] = p.name;
+      if (p) protocolMap[pid] = p;
     }));
 
-    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolNames };
+    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolMap };
   }, [id]);
 
   if (data === undefined) return <div className="p-4">Loading...</div>;
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
-  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolNames } = data;
+  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolMap } = data;
+  const [expandedPcId, setExpandedPcId] = useState<string | null>(null);
   const dim = getDIM(animal);
 
   function openPanel(panel: typeof activePanel) {
@@ -567,20 +568,50 @@ export function AnimalDetail() {
 
               if (entry.type === 'protocol') {
                 const pc = entry.item as (typeof protocolCompletions)[0];
-                const protoName = protocolNames[pc.protocolId] ?? 'Protocol';
-                const total = pc.completedItems.length;
+                const proto = protocolMap[pc.protocolId];
+                const protoName = proto?.name ?? 'Protocol';
+                const completedSet = new Set(pc.completedItems);
+                const isExpanded = expandedPcId === pc.id;
                 return (
                   <Card key={`pc-${pc.id}`}>
-                    <CardContent className="p-3 flex items-start gap-3">
-                      <ClipboardCheck className="h-5 w-5 mt-0.5 text-teal-600 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold">{protoName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {fmt(pc.date, 'MMM d, yyyy')}
-                          {total > 0 && <> · {total} item{total !== 1 ? 's' : ''} completed</>}
-                        </p>
-                        {pc.notes && <p className="text-xs text-muted-foreground mt-0.5">{pc.notes}</p>}
-                      </div>
+                    <CardContent className="p-3">
+                      <button
+                        type="button"
+                        className="w-full flex items-start gap-3 text-left"
+                        onClick={() => setExpandedPcId(isExpanded ? null : pc.id)}
+                      >
+                        <ClipboardCheck className="h-5 w-5 mt-0.5 text-teal-600 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold">{protoName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {fmt(pc.date, 'MMM d, yyyy')}
+                            {proto && proto.items.length > 0 && (
+                              <> · {pc.completedItems.length}/{proto.items.length} completed</>
+                            )}
+                          </p>
+                          {pc.notes && <p className="text-xs text-muted-foreground mt-0.5">{pc.notes}</p>}
+                        </div>
+                        <ChevronRight className={`h-4 w-4 text-muted-foreground shrink-0 mt-0.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      </button>
+
+                      {isExpanded && proto && proto.items.length > 0 && (
+                        <div className="mt-3 space-y-1 border-t pt-3">
+                          {proto.items.map(item => {
+                            const done = completedSet.has(item.id);
+                            return (
+                              <div key={item.id} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm ${done ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                                <span className={`text-base leading-none ${done ? 'text-emerald-500' : 'text-muted-foreground/40'}`}>
+                                  {done ? '✓' : '○'}
+                                </span>
+                                <span className={done ? 'font-medium' : 'line-through opacity-60'}>{item.label}</span>
+                                {item.dosePerAnimal != null && (
+                                  <span className="ml-auto text-xs text-muted-foreground">{item.dosePerAnimal} units</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );

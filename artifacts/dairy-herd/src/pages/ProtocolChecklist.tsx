@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useParams } from 'wouter';
+import { useLocation } from 'wouter';
 import { db, type Protocol } from '@/db';
 import { useAuth } from '@/contexts/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,21 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, ClipboardCheck, CheckCircle2 } from 'lucide-react';
-import { Link } from 'wouter';
 import { format } from 'date-fns';
 
-/**
- * ProtocolChecklist — complete one or more protocols for a specific animal.
- *
- * Route: /protocol-checklist
- * Query params:
- *   trigger  — e.g. "calving" — loads all protocols for that trigger type
- *   animalId — the animal being processed
- *   returnTo — where to go after saving (default: /herd)
- *
- * Also supports a single protocol:
- *   protocolId — load just this one protocol
- */
 export function ProtocolChecklist() {
   const [, navigate] = useLocation();
   const { farmId } = useAuth();
@@ -35,19 +22,17 @@ export function ProtocolChecklist() {
 
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [animal, setAnimal] = useState<{ name: string; barnName?: string; number: string } | null>(null);
-  const [checked, setChecked] = useState<Record<string, Set<string>>>({}); // protocolId → Set of itemIds
+  const [checked, setChecked] = useState<Record<string, Set<string>>>({});
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
     async function load() {
-      // Load animal
       if (animalId) {
         const a = await db.animals.get(animalId);
         if (a) setAnimal(a);
       }
-      // Load protocols
       let protos: Protocol[] = [];
       if (protocolId) {
         const p = await db.protocols.get(protocolId);
@@ -59,7 +44,6 @@ export function ProtocolChecklist() {
           .toArray();
       }
       setProtocols(protos);
-      // Init checked state — default all items unchecked
       const init: Record<string, Set<string>> = {};
       protos.forEach(p => { init[p.id] = new Set(); });
       setChecked(init);
@@ -77,10 +61,7 @@ export function ProtocolChecklist() {
   }
 
   function checkAll(protoId: string, proto: Protocol) {
-    setChecked(prev => ({
-      ...prev,
-      [protoId]: new Set(proto.items.map(i => i.id)),
-    }));
+    setChecked(prev => ({ ...prev, [protoId]: new Set(proto.items.map(i => i.id)) }));
   }
 
   async function handleSave() {
@@ -89,6 +70,7 @@ export function ProtocolChecklist() {
     const now = new Date().toISOString();
     const today = format(new Date(), 'yyyy-MM-dd');
 
+    // Save protocol completions
     await Promise.all(
       protocols.map(p =>
         db.protocolCompletions.add({
@@ -103,6 +85,38 @@ export function ProtocolChecklist() {
         }),
       ),
     );
+
+    // Deduct pharmacy inventory for checked items that have a drug + dose
+    const deductions: Array<{ drugProductId: string; dose: number }> = [];
+    for (const proto of protocols) {
+      const checkedSet = checked[proto.id] ?? new Set();
+      for (const item of proto.items) {
+        if (
+          checkedSet.has(item.id) &&
+          item.drugProductId &&
+          item.dosePerAnimal != null &&
+          item.dosePerAnimal > 0
+        ) {
+          deductions.push({ drugProductId: item.drugProductId, dose: item.dosePerAnimal });
+        }
+      }
+    }
+
+    if (deductions.length > 0) {
+      // Group by drugProductId to apply all deductions in one modify call per drug
+      const grouped: Record<string, number> = {};
+      for (const d of deductions) {
+        grouped[d.drugProductId] = (grouped[d.drugProductId] ?? 0) + d.dose;
+      }
+      await Promise.all(
+        Object.entries(grouped).map(([drugId, totalDose]) =>
+          db.drugProducts.where('id').equals(drugId).modify(drug => {
+            drug.quantityOnHand = Math.max(0, drug.quantityOnHand - totalDose);
+            drug.updatedAt = now;
+          }),
+        ),
+      );
+    }
 
     setSaving(false);
     setDone(true);
@@ -138,7 +152,7 @@ export function ProtocolChecklist() {
     );
   }
 
-  const totalItems = protocols.reduce((s, p) => s + p.items.length, 0);
+  const totalItems   = protocols.reduce((s, p) => s + p.items.length, 0);
   const totalChecked = protocols.reduce((s, p) => s + (checked[p.id]?.size ?? 0), 0);
 
   return (
@@ -151,20 +165,16 @@ export function ProtocolChecklist() {
           <h2 className="text-xl font-bold leading-tight">
             {protocols.length === 1 ? protocols[0].name : 'Protocols'}
           </h2>
-          {animalLabel && (
-            <p className="text-sm text-muted-foreground">{animalLabel}</p>
-          )}
+          {animalLabel && <p className="text-sm text-muted-foreground">{animalLabel}</p>}
         </div>
       </div>
 
-      {/* Progress pill */}
+      {/* Progress bar */}
       {totalItems > 0 && (
         <div className="flex items-center gap-3 px-1">
           <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-500 rounded-full transition-all"
-              style={{ width: `${(totalChecked / totalItems) * 100}%` }}
-            />
+            <div className="h-full bg-emerald-500 rounded-full transition-all"
+              style={{ width: `${(totalChecked / totalItems) * 100}%` }} />
           </div>
           <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
             {totalChecked}/{totalItems}
@@ -178,26 +188,14 @@ export function ProtocolChecklist() {
             {protocols.length > 1 && (
               <div className="flex items-center justify-between">
                 <p className="font-bold text-base">{proto.name}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-7 text-primary"
-                  onClick={() => checkAll(proto.id, proto)}
-                >
-                  Check all
-                </Button>
+                <Button variant="ghost" size="sm" className="text-xs h-7 text-primary"
+                  onClick={() => checkAll(proto.id, proto)}>Check all</Button>
               </div>
             )}
             {protocols.length === 1 && proto.items.length > 0 && (
               <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-7 text-primary"
-                  onClick={() => checkAll(proto.id, proto)}
-                >
-                  Check all
-                </Button>
+                <Button variant="ghost" size="sm" className="text-xs h-7 text-primary"
+                  onClick={() => checkAll(proto.id, proto)}>Check all</Button>
               </div>
             )}
 
@@ -209,22 +207,24 @@ export function ProtocolChecklist() {
               {proto.items.map((item, idx) => {
                 const isChecked = checked[proto.id]?.has(item.id) ?? false;
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
+                  <button key={item.id} type="button"
+                    className={`w-full flex items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
                       isChecked ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-secondary/40 hover:bg-secondary/70'
                     }`}
-                    onClick={() => toggleItem(proto.id, item.id)}
-                  >
-                    <Checkbox
-                      checked={isChecked}
+                    onClick={() => toggleItem(proto.id, item.id)}>
+                    <Checkbox checked={isChecked}
                       onCheckedChange={() => toggleItem(proto.id, item.id)}
-                      className="pointer-events-none shrink-0"
-                    />
-                    <span className={`text-sm font-medium flex-1 ${isChecked ? 'line-through text-muted-foreground' : ''}`}>
-                      {idx + 1}. {item.label}
-                    </span>
+                      className="pointer-events-none shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${isChecked ? 'line-through text-muted-foreground' : ''}`}>
+                        {idx + 1}. {item.label}
+                      </p>
+                      {item.drugProductId && item.dosePerAnimal != null && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.dosePerAnimal} units · inventory will be deducted when checked
+                        </p>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -233,29 +233,18 @@ export function ProtocolChecklist() {
         </Card>
       ))}
 
-      {/* Notes */}
       <Card>
         <CardContent className="p-4 space-y-2">
           <Label htmlFor="proto-notes">Notes (optional)</Label>
-          <Textarea
-            id="proto-notes"
-            className="text-base min-h-[70px]"
+          <Textarea id="proto-notes" className="text-base min-h-[70px]"
             placeholder="Any observations or follow-up notes…"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
+            value={notes} onChange={e => setNotes(e.target.value)} />
         </CardContent>
       </Card>
 
       <div className="flex gap-3">
-        <Button variant="outline" className="h-14 flex-1" onClick={() => navigate(returnTo)}>
-          Skip
-        </Button>
-        <Button
-          className="h-14 flex-1 text-base font-bold gap-2"
-          disabled={saving}
-          onClick={handleSave}
-        >
+        <Button variant="outline" className="h-14 flex-1" onClick={() => navigate(returnTo)}>Skip</Button>
+        <Button className="h-14 flex-1 text-base font-bold gap-2" disabled={saving} onClick={handleSave}>
           <ClipboardCheck className="h-5 w-5" />
           {saving ? 'Saving…' : 'Record'}
         </Button>

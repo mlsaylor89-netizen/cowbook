@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, AlertTriangle, FlaskConical } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, FlaskConical, ListChecks } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, addDays } from 'date-fns';
@@ -37,10 +37,15 @@ export function TreatmentForm() {
   const searchParams = new URLSearchParams(window.location.search);
   const initialAnimalId = searchParams.get('animalId') || '';
 
-  const { animals, drugs } = useLiveQuery(async () => ({
+  const [useProtocol, setUseProtocol] = useState(false);
+  const [selectedProtocolId, setSelectedProtocolId] = useState('');
+
+  const { animals, drugs, treatmentProtocols } = useLiveQuery(async () => ({
     animals: (await db.animals.toArray()).sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name)),
     drugs: (await db.drugProducts.toArray()).sort((a, b) => a.name.localeCompare(b.name)),
-  })) ?? { animals: [], drugs: [] };
+    treatmentProtocols: (await db.protocols.where('triggerType').equals('treatment').toArray())
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  })) ?? { animals: [], drugs: [], treatmentProtocols: [] };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -76,6 +81,27 @@ export function TreatmentForm() {
     if (drug.defaultDose) form.setValue('dose', drug.defaultDose);
     if (drug.defaultRoute) form.setValue('route', drug.defaultRoute);
   }, [drugProductId, drugs]);
+
+  // Auto-fill when a treatment protocol is selected
+  useEffect(() => {
+    if (!selectedProtocolId || !treatmentProtocols.length || !drugs.length) return;
+    const proto = treatmentProtocols.find(p => p.id === selectedProtocolId);
+    if (!proto) return;
+    // Pre-fill from the first pharmacy drug item in the protocol
+    const firstDrugItem = proto.items.find(i => i.drugProductId);
+    if (firstDrugItem?.drugProductId) {
+      const drug = drugs.find(d => d.id === firstDrugItem.drugProductId);
+      if (drug) {
+        form.setValue('drugProductId', drug.id);
+        form.setValue('product', drug.name);
+        if (drug.milkWithholdDays) form.setValue('milkWithholdDays', drug.milkWithholdDays);
+        if (drug.meatWithholdDays) form.setValue('meatWithholdDays', drug.meatWithholdDays);
+        if (firstDrugItem.dosePerAnimal) form.setValue('dose', `${firstDrugItem.dosePerAnimal} ${drug.unit}`);
+        if (drug.defaultRoute) form.setValue('route', drug.defaultRoute);
+        form.setValue('quantityUsed', firstDrugItem.dosePerAnimal ?? undefined);
+      }
+    }
+  }, [selectedProtocolId, treatmentProtocols, drugs]);
 
   const milkWithholdUntilPreview =
     milkWithholdDays && milkWithholdDays > 0 && dateValue
@@ -121,12 +147,45 @@ export function TreatmentForm() {
       updatedAt: now,
     });
 
-    // Deduct from pharmacy inventory
+    // Deduct from pharmacy inventory for directly-selected drug
     if (values.drugProductId && values.quantityUsed && values.quantityUsed > 0) {
       await db.drugProducts.where('id').equals(values.drugProductId).modify(drug => {
         drug.quantityOnHand = Math.max(0, drug.quantityOnHand - values.quantityUsed!);
         drug.updatedAt = now;
       });
+    }
+
+    // If a treatment protocol was used: save completion + deduct all drug items
+    if (useProtocol && selectedProtocolId) {
+      const proto = treatmentProtocols.find(p => p.id === selectedProtocolId);
+      if (proto) {
+        // Mark all items as complete (treatment ran the full protocol)
+        await db.protocolCompletions.add({
+          id: crypto.randomUUID(),
+          farmId: (await db.animals.get(values.animalId))?.farmId ?? '',
+          protocolId: proto.id,
+          animalId: values.animalId,
+          date: format(treatmentDate, 'yyyy-MM-dd'),
+          completedItems: proto.items.map(i => i.id),
+          notes: values.notes?.trim() || undefined,
+          createdAt: now,
+        });
+        // Deduct pharmacy inventory for every drug item with a dose (skip the one already deducted above)
+        for (const item of proto.items) {
+          if (
+            item.drugProductId &&
+            item.dosePerAnimal != null &&
+            item.dosePerAnimal > 0 &&
+            item.drugProductId !== values.drugProductId  // already handled above
+          ) {
+            const dose = item.dosePerAnimal;
+            await db.drugProducts.where('id').equals(item.drugProductId).modify(drug => {
+              drug.quantityOnHand = Math.max(0, drug.quantityOnHand - dose);
+              drug.updatedAt = now;
+            });
+          }
+        }
+      }
     }
 
     if (initialAnimalId) {
@@ -191,6 +250,63 @@ export function TreatmentForm() {
                   <FormMessage />
                 </FormItem>
               )} />
+
+              {/* ── Treatment Protocol picker ── */}
+              {treatmentProtocols.length > 0 && (
+                <div className="border rounded-xl p-4 space-y-3 bg-muted/30">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 text-teal-600" />
+                      <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Use a Protocol</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setUseProtocol(v => !v); setSelectedProtocolId(''); }}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${useProtocol ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${useProtocol ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+
+                  {useProtocol && (
+                    <>
+                      <select
+                        value={selectedProtocolId}
+                        onChange={e => setSelectedProtocolId(e.target.value)}
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="">Select a treatment protocol…</option>
+                        {treatmentProtocols.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+
+                      {selectedProtocolId && (() => {
+                        const proto = treatmentProtocols.find(p => p.id === selectedProtocolId);
+                        if (!proto || proto.items.length === 0) return null;
+                        return (
+                          <div className="space-y-1.5">
+                            {proto.items.map(item => {
+                              const drug = item.drugProductId ? drugs.find(d => d.id === item.drugProductId) : null;
+                              return (
+                                <div key={item.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded-lg bg-background border">
+                                  <span className="text-teal-600">·</span>
+                                  <span className="font-medium">{item.label}</span>
+                                  {item.dosePerAnimal != null && drug && (
+                                    <span className="ml-auto text-muted-foreground text-xs">{item.dosePerAnimal} {drug.unit}</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            <p className="text-xs text-muted-foreground pt-1">
+                              All items will be recorded as complete and inventory deducted on save.
+                              The first drug pre-fills the form below.
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* ── Pharmacy picker ── */}
               {drugs.length > 0 && (

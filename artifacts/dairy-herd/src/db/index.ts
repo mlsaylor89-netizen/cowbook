@@ -209,6 +209,8 @@ export type ProtocolTrigger = 'calving' | 'dry-off' | 'vaccination' | 'treatment
 export interface ProtocolItem {
   id: string;
   label: string;
+  drugProductId?: string;   // linked pharmacy drug (for inventory deduction)
+  dosePerAnimal?: number;   // quantity to deduct per animal when item is completed
 }
 
 export interface Protocol {
