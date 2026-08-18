@@ -46,7 +46,7 @@ export function CalvingForm() {
     const animal = await db.animals.get(values.animalId);
     if (!animal) return;
 
-    await processCalving(
+    const { calfId } = await processCalving(
       {
         animalId: values.animalId,
         calvingDate: new Date(values.calvingDate).toISOString(),
@@ -56,7 +56,9 @@ export function CalvingForm() {
       animal,
     );
 
-    // Check if any calving protocols exist — if so, send user to the checklist
+    // Check if any calving protocols exist — if so, send user to the checklist.
+    // Attach the protocol to the calf's page when a calf record was created,
+    // otherwise fall back to the dam's page.
     const calvingProtocols = await db.protocols
       .where('triggerType').equals('calving')
       .count();
@@ -64,12 +66,12 @@ export function CalvingForm() {
     const returnTo = initialAnimalId ? `/herd/${initialAnimalId}` : '/herd';
 
     if (calvingProtocols > 0) {
-      const params = new URLSearchParams({
+      const checklistParams = new URLSearchParams({
         trigger: 'calving',
-        animalId: values.animalId,
+        animalId: calfId ?? values.animalId,
         returnTo,
       });
-      setLocation(`/protocol-checklist?${params.toString()}`);
+      setLocation(`/protocol-checklist?${checklistParams.toString()}`);
     } else {
       setLocation(returnTo);
     }

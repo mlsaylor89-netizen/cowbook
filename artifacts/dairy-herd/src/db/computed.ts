@@ -347,11 +347,14 @@ export async function processPregCheck(data: Omit<PregnancyCheck, 'id' | 'create
   }
 }
 
-export async function processCalving(data: Omit<Calving, 'id' | 'createdAt' | 'updatedAt'>, animal: Animal) {
-  const id = crypto.randomUUID();
+export async function processCalving(
+  data: Omit<Calving, 'id' | 'createdAt' | 'updatedAt'>,
+  animal: Animal,
+): Promise<{ calvingId: string; calfId: string | null }> {
+  const calvingId = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await db.calvings.add({ ...data, id, createdAt: now, updatedAt: now });
+  await db.calvings.add({ ...data, id: calvingId, createdAt: now, updatedAt: now });
 
   await db.animals.update(animal.id, {
     lactationStatus: 'Milking',
@@ -364,10 +367,11 @@ export async function processCalving(data: Omit<Calving, 'id' | 'createdAt' | 'u
     updatedAt: now
   });
 
-  // Auto-create a heifer record for female calves
+  // Auto-create a heifer record for female calves and return her ID
   if (data.calfSex === 'Heifer' || data.calfSex === 'Twins') {
+    const calfId = crypto.randomUUID();
     await db.animals.add({
-      id: crypto.randomUUID(),
+      id: calfId,
       farmId: animal.farmId,
       number: '00',
       name: `Calf of ${animal.number}`,
@@ -382,5 +386,8 @@ export async function processCalving(data: Omit<Calving, 'id' | 'createdAt' | 'u
       createdAt: now,
       updatedAt: now,
     });
+    return { calvingId, calfId };
   }
+
+  return { calvingId, calfId: null };
 }
