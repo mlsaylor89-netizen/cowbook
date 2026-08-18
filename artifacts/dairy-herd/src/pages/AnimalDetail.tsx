@@ -172,11 +172,54 @@ export function AnimalDetail() {
   }
 
   async function deleteEvent(type: 'breeding' | 'calving' | 'heat', eventId: string) {
+    if (type === 'calving') {
+      await deleteCalving(eventId);
+      return;
+    }
     if (!confirm(`Remove this ${type} record? This cannot be undone.`)) return;
     if (type === 'breeding') await db.breedings.delete(eventId);
-    else if (type === 'calving') await db.calvings.delete(eventId);
     else await db.heats.delete(eventId);
     toast({ title: `${type.charAt(0).toUpperCase() + type.slice(1)} record removed` });
+  }
+
+  async function deleteCalving(calvingId: string) {
+    if (!confirm(
+      'Remove this calving record?\n\nShe will be returned to Pregnant status with her expected calving date restored.'
+    )) return;
+
+    const calving = await db.calvings.get(calvingId);
+    if (!calving) return;
+
+    const now = new Date().toISOString();
+
+    // Find the most recent calving BEFORE this one to restore lastCalvingDate and lactationNumber
+    const allCalvings = (await db.calvings.where('animalId').equals(animal.id).toArray())
+      .filter(c => c.id !== calvingId)
+      .sort((a, b) => a.calvingDate.localeCompare(b.calvingDate));
+
+    const prevCalving = allCalvings.filter(c => c.calvingDate < calving.calvingDate).slice(-1)[0];
+
+    // Determine restored lactation number (undo the +1 that processCalving applied)
+    const restoredLactationNumber = Math.max(0, animal.lactationNumber - 1);
+
+    // Was she a heifer before this calving (i.e., no prior calvings)?
+    const wasHeifer = !prevCalving;
+
+    await db.animals.update(animal.id, {
+      // Restore status fields — she was dry & pregnant before calving (or bred heifer if first calving)
+      lactationStatus: wasHeifer ? 'Heifer' : 'Dry',
+      reproStatus:     'Pregnant',
+      status:          wasHeifer ? 'BredHeifer' : 'Pregnant',
+      // Restore calving-date fields
+      lastCalvingDate:    prevCalving?.calvingDate,
+      expectedCalvingDate: calving.calvingDate,   // use actual calving date as best proxy for expected
+      expectedDryOffDate:  undefined,
+      lactationNumber:     restoredLactationNumber,
+      updatedAt: now,
+    });
+
+    await db.calvings.delete(calvingId);
+    toast({ title: 'Calving removed — cow returned to pregnant status' });
   }
 
   return (
