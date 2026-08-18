@@ -245,6 +245,8 @@ export interface SyncProtocolBatch {
   animalIds: string[];
   status: 'active' | 'completed' | 'cancelled';
   notes?: string;
+  // Optional per-event-type drug mapping for inventory deduction on markDone
+  drugMap?: Partial<Record<SyncEventType, { drugProductId: string; dosePerAnimal: number } | null>>;
   createdAt: string;
   updatedAt: string;
 }

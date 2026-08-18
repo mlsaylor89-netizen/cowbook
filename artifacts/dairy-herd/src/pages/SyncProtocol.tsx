@@ -25,7 +25,15 @@ import { useToast } from '@/hooks/use-toast';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
-type WizardStep = 'animals' | 'protocol' | 'date' | 'confirm';
+type WizardStep = 'animals' | 'protocol' | 'date' | 'drugs' | 'confirm';
+
+// Event types that actually consume a drug product from the pharmacy
+const DRUG_CONSUMING_TYPES: SyncEventType[] = ['gnrh', 'pgf', 'cidr-insert'];
+const DRUG_EVENT_LABELS: Partial<Record<SyncEventType, string>> = {
+  gnrh:          'GnRH shots',
+  pgf:           'PGF₂α shots',
+  'cidr-insert': 'CIDR devices',
+};
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -117,12 +125,22 @@ function EventList() {
     );
   }
 
-  async function markDone(id: string) {
+  async function markDone(id: string, batchId: string, eventType: SyncEventType) {
+    const now = new Date().toISOString();
     await db.syncEvents.update(id, {
       status: 'completed',
-      completedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      completedAt: now,
+      updatedAt: now,
     });
+    // Deduct from pharmacy inventory if this batch has a drug mapped for this event type
+    const batch = await db.syncProtocolBatches.get(batchId);
+    const mapping = batch?.drugMap?.[eventType];
+    if (mapping?.drugProductId && mapping.dosePerAnimal > 0) {
+      await db.drugProducts.where('id').equals(mapping.drugProductId).modify(d => {
+        d.quantityOnHand = Math.max(0, d.quantityOnHand - mapping.dosePerAnimal);
+        d.updatedAt = now;
+      });
+    }
   }
 
   async function markSkip(id: string) {
@@ -178,12 +196,12 @@ function EventList() {
         <div className="flex gap-1 shrink-0">
           {event.eventType === 'timed-ai' ? (
             <Link href={`/breeding?animalId=${event.animalId}`}>
-              <Button size="sm" className="h-7 text-xs" onClick={() => markDone(event.id)}>
+              <Button size="sm" className="h-7 text-xs" onClick={() => markDone(event.id, event.batchId, event.eventType)}>
                 <Check className="h-3 w-3 mr-1" /> Breed
               </Button>
             </Link>
           ) : (
-            <Button size="sm" className="h-7 text-xs" onClick={() => markDone(event.id)}>
+            <Button size="sm" className="h-7 text-xs" onClick={() => markDone(event.id, event.batchId, event.eventType)}>
               <Check className="h-3 w-3 mr-1" /> Done
             </Button>
           )}
@@ -322,7 +340,12 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
   const [protocol, setProtocol] = useState<SyncProtocolType | null>(null);
   // startDatetime is stored in the datetime-local input format: 'yyyy-MM-ddTHH:mm'
   const [startDatetime, setStartDatetime] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [drugMap, setDrugMap] = useState<Partial<Record<SyncEventType, { drugProductId: string; dosePerAnimal: number }>>>({});
   const [saving, setSaving] = useState(false);
+
+  const drugs = useLiveQuery(() =>
+    db.drugProducts.toArray().then(d => d.sort((a, b) => a.name.localeCompare(b.name))),
+  );
 
   // Derived: date-only portion for batch record & display
   const startDate = startDatetime.slice(0, 10);
@@ -390,6 +413,11 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
       const now    = new Date().toISOString();
       const batchId = crypto.randomUUID();
 
+      // Only save drugMap entries that have both a product and a dose
+      const cleanDrugMap = Object.fromEntries(
+        Object.entries(drugMap).filter(([, v]) => v?.drugProductId && (v?.dosePerAnimal ?? 0) > 0)
+      ) as SyncProtocolBatch['drugMap'];
+
       await db.syncProtocolBatches.add({
         id: batchId,
         farmId,
@@ -397,6 +425,7 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
         startDate,
         animalIds: [...selectedIds],
         status: 'active',
+        drugMap: Object.keys(cleanDrugMap ?? {}).length > 0 ? cleanDrugMap : undefined,
         createdAt: now,
         updatedAt: now,
       });
@@ -434,7 +463,7 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
     }
   }
 
-  const STEPS: WizardStep[] = ['animals', 'protocol', 'date', 'confirm'];
+  const STEPS: WizardStep[] = ['animals', 'protocol', 'date', 'drugs', 'confirm'];
   const stepIdx = STEPS.indexOf(step);
 
   function StepDots() {
@@ -584,12 +613,77 @@ function NewBatchWizard({ onDone }: { onDone: () => void }) {
 
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1 h-11" onClick={() => setStep('protocol')}>Back</Button>
-            <Button className="flex-1 h-11" disabled={!startDatetime} onClick={() => setStep('confirm')}>Next — Confirm</Button>
+            <Button className="flex-1 h-11" disabled={!startDatetime} onClick={() => setStep('drugs')}>Next — Drugs</Button>
           </div>
         </div>
       )}
 
-      {/* ── Step 4: Confirm ── */}
+      {/* ── Step 4: Drugs (inventory deduction mapping) ── */}
+      {step === 'drugs' && protocolDef && (
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-1">Link Pharmacy Products</p>
+            <p className="text-xs text-muted-foreground px-1 mt-1">
+              Map each drug type to your inventory so each "Done" tap automatically deducts the dose. Skip any you don't track.
+            </p>
+          </div>
+          {(() => {
+            const usedTypes = [...new Set(protocolDef.events.map(e => e.eventType))].filter(t => DRUG_CONSUMING_TYPES.includes(t)) as SyncEventType[];
+            return usedTypes.map(eventType => {
+              const mapping = drugMap[eventType];
+              const selectedDrug = mapping?.drugProductId ? drugs?.find(d => d.id === mapping.drugProductId) : null;
+              return (
+                <Card key={eventType} className="shadow-sm">
+                  <CardContent className="p-4 space-y-3">
+                    <p className="font-semibold text-sm">{DRUG_EVENT_LABELS[eventType]}</p>
+                    <div className="space-y-2">
+                      <select
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-2 focus:ring-ring"
+                        value={mapping?.drugProductId ?? ''}
+                        onChange={e => {
+                          const id = e.target.value;
+                          setDrugMap(prev => id
+                            ? { ...prev, [eventType]: { drugProductId: id, dosePerAnimal: prev[eventType]?.dosePerAnimal ?? 0 } }
+                            : { ...prev, [eventType]: undefined }
+                          );
+                        }}
+                      >
+                        <option value="">— Skip / don't track —</option>
+                        {(drugs ?? []).map(d => (
+                          <option key={d.id} value={d.id}>{d.name} ({d.quantityOnHand} {d.unit} on hand)</option>
+                        ))}
+                      </select>
+                      {mapping?.drugProductId && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.1"
+                            placeholder="Dose per animal"
+                            className="h-11 flex-1 rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-2 focus:ring-ring"
+                            value={mapping.dosePerAnimal || ''}
+                            onChange={e => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setDrugMap(prev => ({ ...prev, [eventType]: { ...prev[eventType]!, dosePerAnimal: val } }));
+                            }}
+                          />
+                          <span className="text-sm text-muted-foreground shrink-0">{selectedDrug?.unit ?? 'units'} / animal</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            });
+          })()}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 h-11" onClick={() => setStep('date')}>Back</Button>
+            <Button className="flex-1 h-11" onClick={() => setStep('confirm')}>Next — Confirm</Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 5: Confirm ── */}
       {step === 'confirm' && protocolDef && (
         <div className="space-y-4">
           <Card className="border-primary/30 bg-primary/5">
