@@ -1,20 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/db';
+import { db, type DrugCategory } from '@/db';
 import { useLocation } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, AlertTriangle, Pencil, Trash2, Pill, Syringe } from 'lucide-react';
-
-const CATEGORY_BADGE: Record<string, { label: string; className: string; icon?: React.ReactNode }> = {
-  antibiotic: { label: 'Antibiotic', className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400', icon: <Pill className="h-2.5 w-2.5" /> },
-  vaccine:    { label: 'Vaccine',    className: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400', icon: <Syringe className="h-2.5 w-2.5" /> },
-  hormone:    { label: 'Hormone',    className: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400' },
-  pain:       { label: 'Pain / Anti-inflammatory', className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400' },
-  vitamin:    { label: 'Vitamin / Supplement', className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400' },
-  other:      { label: 'Other',      className: 'bg-secondary text-muted-foreground border-border' },
-};
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +17,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+const CATEGORY_BADGE: Record<string, { label: string; className: string; icon?: React.ReactNode }> = {
+  antibiotic: { label: 'Antibiotic',            className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400',       icon: <Pill className="h-2.5 w-2.5" /> },
+  vaccine:    { label: 'Vaccine',               className: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400',   icon: <Syringe className="h-2.5 w-2.5" /> },
+  hormone:    { label: 'Hormone',               className: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400' },
+  pain:       { label: 'Pain / Anti-inflam.',   className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400' },
+  vitamin:    { label: 'Vitamin / Supplement',  className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400' },
+  other:      { label: 'Other',                 className: 'bg-secondary text-muted-foreground border-border' },
+};
+
+// Ordered tab list — only show tabs that have at least one drug
+const CATEGORY_ORDER: DrugCategory[] = ['antibiotic', 'vaccine', 'hormone', 'pain', 'vitamin', 'other'];
+
 type DialogMode = { type: 'restock'; id: string; name: string; unit: string }
                | { type: 'delete';  id: string; name: string }
                | null;
@@ -34,6 +37,7 @@ export function PharmacyInventory() {
   const [, navigate] = useLocation();
   const [dialog, setDialog] = useState<DialogMode>(null);
   const [restockQty, setRestockQty] = useState('');
+  const [activeFilter, setActiveFilter] = useState<DrugCategory | 'all'>('all');
 
   const drugs = useLiveQuery(async () => {
     const all = await db.drugProducts.toArray();
@@ -74,8 +78,39 @@ export function PharmacyInventory() {
           No drugs in pharmacy yet.
         </div>
       ) : (
+        <>
+          {/* Category filter tabs — only render tabs for categories that exist */}
+          {(() => {
+            const presentCategories = CATEGORY_ORDER.filter(c => drugs.some(d => d.category === c));
+            if (presentCategories.length === 0) return null;
+            return (
+              <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${activeFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:border-primary/40'}`}
+                >
+                  All ({drugs.length})
+                </button>
+                {presentCategories.map(cat => {
+                  const badge = CATEGORY_BADGE[cat];
+                  const count = drugs.filter(d => d.category === cat).length;
+                  const isActive = activeFilter === cat;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveFilter(cat)}
+                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${isActive ? 'bg-primary text-primary-foreground border-primary' : `${badge.className} hover:opacity-80`}`}
+                    >
+                      {badge.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
         <div className="space-y-3">
-          {drugs.map(drug => {
+          {drugs.filter(d => activeFilter === 'all' || d.category === activeFilter).map(drug => {
             const threshold = drug.lowStockThreshold ?? 1;
             const pct = drug.bottleSize && drug.bottleSize > 0
               ? Math.max(0, Math.round((drug.quantityOnHand / drug.bottleSize) * 100))
@@ -187,6 +222,7 @@ export function PharmacyInventory() {
             );
           })}
         </div>
+        </>
       )}
 
       {/* Restock dialog */}
