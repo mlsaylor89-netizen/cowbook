@@ -20,16 +20,16 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Baby,
   Droplets,
   Syringe,
   Stethoscope,
   ClipboardList,
 } from 'lucide-react';
 import { Link } from 'wouter';
+import { CalfIcon } from '@/components/icons';
 
 const TRIGGER_META: Record<ProtocolTrigger, { label: string; icon: React.ReactNode; color: string }> = {
-  calving:     { label: 'After Calving',     icon: <Baby className="h-4 w-4" />,         color: 'text-pink-500' },
+  calving:     { label: 'After Calving',     icon: <CalfIcon className="h-4 w-4" />,     color: 'text-pink-500' },
   'dry-off':   { label: 'Dry Off',           icon: <Droplets className="h-4 w-4" />,     color: 'text-blue-500' },
   vaccination: { label: 'Vaccination',       icon: <Syringe className="h-4 w-4" />,      color: 'text-emerald-500' },
   treatment:   { label: 'Treatment',         icon: <Stethoscope className="h-4 w-4" />,  color: 'text-purple-500' },

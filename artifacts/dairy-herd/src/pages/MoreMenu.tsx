@@ -8,7 +8,6 @@ import {
   Activity,
   Droplet,
   ClipboardList,
-  Dna,
   FlaskConical,
   Pill,
   LogOut,
@@ -21,6 +20,7 @@ import {
   ListChecks,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
+import { SpermIcon } from '@/components/icons';
 
 export function MoreMenu() {
   const { user, farmId, logout } = useAuth();
@@ -36,7 +36,7 @@ export function MoreMenu() {
         <MenuLink href="/reports" icon={<Activity className="h-5 w-5 text-blue-600" />} title="Herd Reports & Metrics" />
         <MenuLink href="/treatment-log" icon={<ClipboardList className="h-5 w-5 text-purple-600" />} title="Treatment Log" />
         <MenuLink href="/checklist/treatments" icon={<Droplet className="h-5 w-5 text-rose-600" />} title="Active Treatments & Withholds" />
-        <MenuLink href="/semen" icon={<Dna className="h-5 w-5 text-cyan-600" />} title="Semen Inventory" />
+        <MenuLink href="/semen" icon={<SpermIcon className="h-5 w-5 text-cyan-600" />} title="Semen Inventory" />
         <MenuLink href="/embryo" icon={<FlaskConical className="h-5 w-5 text-violet-600" />} title="Embryo Inventory" />
         <MenuLink href="/flush" icon={<Microscope className="h-5 w-5 text-teal-600" />} title="Flush History" />
         <MenuLink href="/et-recipients" icon={<Pipette className="h-5 w-5 text-violet-500" />} title="ET Recipients" />

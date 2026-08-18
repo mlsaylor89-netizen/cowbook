@@ -4,7 +4,8 @@ import { format, parseISO, isToday, isBefore } from 'date-fns';
 import { db } from '@/db';
 import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, getWatchForHeatList, getScheduledProtocolsDue } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer, CalendarDays, ClipboardList, FlaskConical } from 'lucide-react';
+import { ChevronRight, Stethoscope, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer, CalendarDays, ClipboardList, FlaskConical } from 'lucide-react';
+import { CalfIcon } from '@/components/icons';
 import { HeatAlerts } from '@/pages/HeatAlerts';
 import { SyncEventWidget } from '@/pages/SyncEventWidget';
 import { seedDemoData } from '@/db/seed';
@@ -234,7 +235,7 @@ export function Home() {
           <ChecklistCard
             title="Upcoming Calvings"
             count={data.calvings.due7Days.length + data.calvings.due30Days.length}
-            icon={<Baby className="h-5 w-5 text-green-600" />}
+            icon={<CalfIcon className="h-5 w-5 text-green-600" />}
             href="/checklist/calvings"
           />
           <ChecklistCard

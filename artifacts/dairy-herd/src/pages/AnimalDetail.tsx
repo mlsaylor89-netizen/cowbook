@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, Magnet } from 'lucide-react';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, Magnet } from 'lucide-react';
+import { CalfIcon } from '@/components/icons';
 import { format, parseISO, isValid, addDays, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -340,7 +341,7 @@ export function AnimalDetail() {
           </Link>
           <Link href={`/calving?animalId=${animal.id}`} className="block">
             <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
-              <Baby className="h-4 w-4 text-primary" />
+              <CalfIcon className="h-4 w-4 text-primary" />
               <span>Calve</span>
             </Button>
           </Link>
@@ -616,7 +617,7 @@ export function AnimalDetail() {
                 return (
                   <Card key={`c-${c.id}`}>
                     <CardContent className="p-3 flex items-start gap-3">
-                      <Baby className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+                      <CalfIcon className="h-5 w-5 mt-0.5 text-primary shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-bold">Calved ({c.calfSex})</p>
                         <p className="text-sm text-muted-foreground">{fmt(c.calvingDate, 'MMM d, yyyy')}</p>

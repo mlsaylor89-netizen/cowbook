@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'wouter';
-import { Home, List, Heart, FlaskConical, Menu, Plus, Thermometer } from 'lucide-react';
+import { Home, List, Heart, Menu, Plus, Thermometer } from 'lucide-react';
+import { SpermIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/useAuth';
 import {
@@ -32,7 +33,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SidebarItem href="/herd" icon={List} label="Herd" active={location.startsWith('/herd')} />
           <SidebarItem href="/breeding" icon={Heart} label="Record Breeding" active={location.startsWith('/breeding')} />
           <SidebarItem href="/heat" icon={Thermometer} label="Record Heat" active={location.startsWith('/heat')} />
-          <SidebarItem href="/semen" icon={FlaskConical} label="Semen Inventory" active={location.startsWith('/semen')} />
+          <SidebarItem href="/semen" icon={SpermIcon} label="Semen Inventory" active={location.startsWith('/semen')} />
           <SidebarItem href="/more" icon={Menu} label="More" active={location.startsWith('/more')} />
         </nav>
         {!isViewer && (
@@ -80,7 +81,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <NavItem href="/" icon={Home} label="Home" active={location === '/'} />
         <NavItem href="/herd" icon={List} label="Herd" active={location.startsWith('/herd')} />
         <NavItem href="/breeding" icon={Heart} label="Breed" active={location.startsWith('/breeding')} />
-        <NavItem href="/semen" icon={FlaskConical} label="Semen" active={location.startsWith('/semen')} />
+        <NavItem href="/semen" icon={SpermIcon} label="Semen" active={location.startsWith('/semen')} />
         <NavItem href="/more" icon={Menu} label="More" active={location.startsWith('/more')} />
       </nav>
     </div>
