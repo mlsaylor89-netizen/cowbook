@@ -356,7 +356,7 @@ export interface VaccinationRecord {
   updatedAt: string;
 }
 
-export type HealthEventType = 'wean' | 'hoof-trim' | 'bcs' | 'dehorn';
+export type HealthEventType = 'wean' | 'hoof-trim' | 'bcs' | 'dehorn' | 'magnet';
 
 export interface HealthEvent {
   id: string;

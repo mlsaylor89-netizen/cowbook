@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, Magnet } from 'lucide-react';
 import { format, parseISO, isValid, addDays, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,7 +58,7 @@ export function AnimalDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Inline quick-log panel state
-  const [activePanel, setActivePanel] = useState<'wean' | 'hoof-trim' | 'bcs' | 'dehorn' | null>(null);
+  const [activePanel, setActivePanel] = useState<'wean' | 'hoof-trim' | 'bcs' | 'dehorn' | 'magnet' | null>(null);
   const [panelDate, setPanelDate]     = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [panelValue, setPanelValue]   = useState('');
   const [panelNotes, setPanelNotes]   = useState('');
@@ -124,11 +124,16 @@ export function AnimalDetail() {
         createdAt: now,
         updatedAt: now,
       });
+      // If magnet was given, also stamp animal.magnetDate so the badge appears
+      if (activePanel === 'magnet') {
+        await db.animals.update(animal.id, { magnetDate: panelDate, updatedAt: new Date().toISOString() });
+      }
       const labels: Record<string, string> = {
         'wean': 'Weaning recorded',
         'hoof-trim': 'Hoof trim recorded',
         'bcs': 'BCS recorded',
         'dehorn': 'Dehorn recorded',
+        'magnet': 'Magnet recorded',
       };
       toast({ title: labels[activePanel] ?? 'Event recorded' });
       setActivePanel(null);
@@ -351,7 +356,7 @@ export function AnimalDetail() {
             </Button>
           </Link>
 
-          {/* Actions dropdown — Vaccinate, Hoof Trim, BCS, Wean */}
+          {/* Actions dropdown — Vaccinate, Hoof Trim, BCS, Wean, Magnet */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full h-14 flex-col gap-1 bg-card hover:bg-accent/10 border-border text-xs">
@@ -374,6 +379,9 @@ export function AnimalDetail() {
               <DropdownMenuItem onSelect={() => openPanel('wean')}>
                 <Milk className="h-4 w-4 mr-2 text-orange-500" /> Wean
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('magnet')}>
+                <Magnet className="h-4 w-4 mr-2 text-slate-600" /> Record Magnet
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -383,7 +391,7 @@ export function AnimalDetail() {
           <Card className="border-accent/50">
             <CardContent className="p-4 space-y-3">
               <p className="font-bold text-sm capitalize">
-                {activePanel === 'hoof-trim' ? 'Hoof Trim' : activePanel === 'bcs' ? 'Body Condition Score' : activePanel === 'wean' ? 'Record Weaning' : 'Dehorn'}
+                {activePanel === 'hoof-trim' ? 'Hoof Trim' : activePanel === 'bcs' ? 'Body Condition Score' : activePanel === 'wean' ? 'Record Weaning' : activePanel === 'magnet' ? 'Record Magnet' : 'Dehorn'}
               </p>
 
               {activePanel === 'bcs' && (
@@ -421,6 +429,7 @@ export function AnimalDetail() {
                     activePanel === 'hoof-trim' ? 'Trimmer, condition, issues found…'
                     : activePanel === 'bcs' ? 'Observer, body area notes…'
                     : activePanel === 'wean' ? 'Weaning weight, method…'
+                    : activePanel === 'magnet' ? 'Administering vet, brand, notes…'
                     : 'Method, notes…'
                   }
                   value={panelNotes}
@@ -701,13 +710,14 @@ export function AnimalDetail() {
                 );
               }
 
-              // health event (wean / hoof-trim / bcs / dehorn)
+              // health event (wean / hoof-trim / bcs / dehorn / magnet)
               const ev = entry.item as (typeof healthEvents)[0];
               const healthMeta: Record<string, { label: string; icon: React.ReactNode }> = {
                 'wean':      { label: 'Weaned',    icon: <Milk     className="h-5 w-5 mt-0.5 text-orange-500 shrink-0" /> },
                 'hoof-trim': { label: 'Hoof Trim', icon: <Scissors className="h-5 w-5 mt-0.5 text-amber-600 shrink-0" /> },
                 'bcs':       { label: 'Body Condition Score', icon: <BarChart3 className="h-5 w-5 mt-0.5 text-sky-600 shrink-0" /> },
                 'dehorn':    { label: 'Dehorned',  icon: <AlertTriangle className="h-5 w-5 mt-0.5 text-red-500 shrink-0" /> },
+                'magnet':    { label: 'Magnet Given', icon: <Magnet className="h-5 w-5 mt-0.5 text-slate-600 shrink-0" /> },
               };
               const hm = healthMeta[ev.type] ?? { label: ev.type, icon: <Activity className="h-5 w-5 mt-0.5 shrink-0" /> };
               return (
