@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'wouter';
-import { ArrowLeft, FlaskConical, CalendarCheck, Printer, ClipboardList } from 'lucide-react';
+import { ArrowLeft, FlaskConical, CalendarCheck, Printer, ClipboardList, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -265,6 +265,95 @@ function SetTestDayPanel({ current, onSaved }: { current: string | null; onSaved
 
 // ─── Report ───────────────────────────────────────────────────────────────────
 
+function buildPlainText(farmName: string, lastTestDay: string, data: NonNullable<ReturnType<typeof buildReportData>>): string {
+  const pad = (s: string, w: number) => s.padEnd(w);
+  const line = (char = '-', len = 60) => char.repeat(len);
+  const today = format(new Date(), 'MMM d, yyyy');
+  const from  = format(parseISO(lastTestDay), 'MMM d, yyyy');
+
+  const lines: string[] = [
+    farmName,
+    'Test Day Report',
+    `Period: ${from} — ${today}`,
+    `Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}`,
+    '',
+  ];
+
+  // Calvings
+  lines.push(line());
+  lines.push(`CALVINGS (${data.calvings.length})`);
+  lines.push(line());
+  if (data.calvings.length === 0) {
+    lines.push('  No calvings recorded since last test day.');
+  } else {
+    lines.push(`${pad('Cow', 22)}${pad('Date', 14)}${pad('Calf Sex', 12)}Calf Tag(s)`);
+    data.calvings.forEach(({ calving, animal }) => {
+      const name = `${animal.number} ${animal.barnName || animal.name}`;
+      const tags = [calving.calfTag, calving.twinCalfTag].filter(Boolean).join(', ') || '—';
+      lines.push(`${pad(name, 22)}${pad(format(parseISO(calving.calvingDate), 'MMM d, yyyy'), 14)}${pad(calving.calfSex, 12)}${tags}`);
+    });
+  }
+  lines.push('');
+
+  // Breedings
+  lines.push(line());
+  lines.push(`BREEDINGS (${data.breedings.length})`);
+  lines.push(line());
+  if (data.breedings.length === 0) {
+    lines.push('  No breedings recorded since last test day.');
+  } else {
+    lines.push(`${pad('Cow', 22)}${pad('Date', 14)}${pad('Service Sire', 28)}Svc #`);
+    data.breedings.forEach(({ breeding, animal, serviceNum, sireName }) => {
+      const name = `${animal.number} ${animal.barnName || animal.name}`;
+      lines.push(`${pad(name, 22)}${pad(format(parseISO(breeding.date), 'MMM d, yyyy'), 14)}${pad(sireName, 28)}${serviceNum}`);
+    });
+  }
+  lines.push('');
+
+  // Dried off
+  lines.push(line());
+  lines.push(`COWS DRIED OFF (${data.driedOff.length})`);
+  lines.push(line());
+  if (data.driedOff.length === 0) {
+    lines.push('  No cows dried off since last test day.');
+  } else {
+    lines.push(`${pad('Cow', 22)}${pad('Dry-Off Date', 16)}Expected Calving`);
+    data.driedOff.forEach(animal => {
+      const name = `${animal.number} ${animal.barnName || animal.name}`;
+      const dryDate = animal.dryOffDate ? format(parseISO(animal.dryOffDate), 'MMM d, yyyy') : '—';
+      const calvDate = animal.expectedCalvingDate ? format(parseISO(animal.expectedCalvingDate), 'MMM d, yyyy') : '—';
+      lines.push(`${pad(name, 22)}${pad(dryDate, 16)}${calvDate}`);
+    });
+  }
+  lines.push('');
+
+  // Confirmed pregnant
+  lines.push(line());
+  lines.push(`CONFIRMED PREGNANT (${data.confirmed.length})`);
+  lines.push(line());
+  if (data.confirmed.length === 0) {
+    lines.push('  No pregnancy confirmations since last test day.');
+  } else {
+    lines.push(`${pad('Cow', 22)}${pad('Check Date', 14)}${pad('Bred Date', 14)}Expected Calving`);
+    data.confirmed.forEach(({ check, animal, breeding }) => {
+      const name = `${animal.number} ${animal.barnName || animal.name}`;
+      const checkDate = format(parseISO(check.checkDate), 'MMM d, yyyy');
+      const bredDate  = breeding ? format(parseISO(breeding.date), 'MMM d, yyyy') : '—';
+      const expCalv   = check.expectedCalvingDate
+        ? format(parseISO(check.expectedCalvingDate), 'MMM d, yyyy')
+        : animal.expectedCalvingDate
+        ? format(parseISO(animal.expectedCalvingDate), 'MMM d, yyyy')
+        : '—';
+      lines.push(`${pad(name, 22)}${pad(checkDate, 14)}${pad(bredDate, 14)}${expCalv}`);
+    });
+  }
+  lines.push('');
+  lines.push(line());
+  lines.push(`HerdTrack · ${farmName} · Test Day ${from}`);
+
+  return lines.join('\n');
+}
+
 function TestDayReport({
   farmName,
   lastTestDay,
@@ -274,10 +363,25 @@ function TestDayReport({
   lastTestDay: string;
   data: NonNullable<ReturnType<typeof buildReportData>>;
 }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  async function copyReport() {
+    const text = buildPlainText(farmName, lastTestDay, data);
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast({ title: 'Report copied', description: 'Paste it into your email.' });
+    setTimeout(() => setCopied(false), 2500);
+  }
+
   return (
     <div>
-      {/* Print button — hidden when printing */}
-      <div className="flex justify-end mb-4 print:hidden">
+      {/* Action buttons — hidden when printing */}
+      <div className="flex justify-end gap-2 mb-4 print:hidden">
+        <Button variant="outline" onClick={copyReport} className="gap-2">
+          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+          {copied ? 'Copied!' : 'Copy Report'}
+        </Button>
         <Button onClick={() => window.print()} className="gap-2">
           <Printer className="h-4 w-4" />
           Print Report
