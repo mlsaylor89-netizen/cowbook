@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -69,7 +69,7 @@ export function AnimalDetail() {
     const animal = await db.animals.get(id);
     if (!animal) return null;
 
-    const [breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents] =
+    const [breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions] =
       await Promise.all([
         db.breedings.where('animalId').equals(id).reverse().sortBy('date'),
         db.calvings.where('animalId').equals(id).reverse().sortBy('calvingDate'),
@@ -80,15 +80,24 @@ export function AnimalDetail() {
         db.heats.where('animalId').equals(id).reverse().sortBy('observedAt'),
         db.vaccinations.where('animalId').equals(id).reverse().sortBy('vaccinationDate'),
         db.healthEvents.where('animalId').equals(id).reverse().sortBy('date'),
+        db.protocolCompletions.where('animalId').equals(id).reverse().sortBy('date'),
       ]);
 
-    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents };
+    // Attach protocol names to completions
+    const protocolNames: Record<string, string> = {};
+    const uniqueIds = [...new Set(protocolCompletions.map(c => c.protocolId))];
+    await Promise.all(uniqueIds.map(async pid => {
+      const p = await db.protocols.get(pid);
+      if (p) protocolNames[pid] = p.name;
+    }));
+
+    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolNames };
   }, [id]);
 
   if (data === undefined) return <div className="p-4">Loading...</div>;
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
-  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents } = data;
+  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolNames } = data;
   const dim = getDIM(animal);
 
   function openPanel(panel: typeof activePanel) {
@@ -450,11 +459,12 @@ export function AnimalDetail() {
         <div className="space-y-3">
           {/* Unified chronological timeline — all event types */}
           {[
-            ...breedings.map(b    => ({ type: 'breeding'    as const, date: b.date ?? '',              item: b })),
-            ...calvings.map(c     => ({ type: 'calving'     as const, date: c.calvingDate ?? '',        item: c })),
-            ...heats.map(h        => ({ type: 'heat'        as const, date: h.observedAt ?? '',         item: h })),
-            ...vaccinations.map(v => ({ type: 'vaccination' as const, date: v.vaccinationDate ?? '',    item: v })),
-            ...healthEvents.map(e => ({ type: 'health'      as const, date: e.date ?? '',               item: e })),
+            ...breedings.map(b          => ({ type: 'breeding'  as const, date: b.date ?? '',           item: b })),
+            ...calvings.map(c           => ({ type: 'calving'   as const, date: c.calvingDate ?? '',     item: c })),
+            ...heats.map(h              => ({ type: 'heat'      as const, date: h.observedAt ?? '',      item: h })),
+            ...vaccinations.map(v       => ({ type: 'vaccination' as const, date: v.vaccinationDate ?? '', item: v })),
+            ...healthEvents.map(e       => ({ type: 'health'    as const, date: e.date ?? '',            item: e })),
+            ...protocolCompletions.map(p => ({ type: 'protocol' as const, date: p.date ?? '',            item: p })),
           ]
             .sort((a, b) => {
               const ta = a.date ? new Date(a.date).getTime() : 0;
@@ -550,6 +560,27 @@ export function AnimalDetail() {
                         onClick={() => deleteVaccination(v.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              if (entry.type === 'protocol') {
+                const pc = entry.item as (typeof protocolCompletions)[0];
+                const protoName = protocolNames[pc.protocolId] ?? 'Protocol';
+                const total = pc.completedItems.length;
+                return (
+                  <Card key={`pc-${pc.id}`}>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <ClipboardCheck className="h-5 w-5 mt-0.5 text-teal-600 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold">{protoName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {fmt(pc.date, 'MMM d, yyyy')}
+                          {total > 0 && <> · {total} item{total !== 1 ? 's' : ''} completed</>}
+                        </p>
+                        {pc.notes && <p className="text-xs text-muted-foreground mt-0.5">{pc.notes}</p>}
+                      </div>
                     </CardContent>
                   </Card>
                 );
