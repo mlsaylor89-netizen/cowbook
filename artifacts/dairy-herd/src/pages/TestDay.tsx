@@ -293,7 +293,7 @@ function TestDayReport({
             <FlaskConical className="h-5 w-5 text-primary" />
           </div>
           <h1 className="text-2xl font-bold print:text-3xl">{farmName}</h1>
-          <h2 className="text-lg font-semibold text-muted-foreground print:text-xl">DHIA Test Day Report</h2>
+          <h2 className="text-lg font-semibold text-muted-foreground print:text-xl">Test Day Report</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Period: {format(parseISO(lastTestDay), 'MMM d, yyyy')} — {format(new Date(), 'MMM d, yyyy')}
           </p>
