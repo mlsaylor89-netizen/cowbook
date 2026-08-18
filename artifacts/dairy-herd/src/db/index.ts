@@ -15,6 +15,7 @@ export interface Animal {
   sire?: string;            // sire name / registration (free text)
   dam?: string;             // dam name / registration (free text)
   lactationNumber: number;
+  sex?: 'M' | 'F';             // M = bull/steer; F = cow/heifer (default female when absent)
   // Legacy combined status — kept for Dexie index & backward compat
   status: 'Lactating' | 'Dry' | 'Heifer' | 'BredHeifer' | 'Pregnant' | 'Open' | 'Sold' | 'Dead';
   // New split statuses — preferred by computed functions

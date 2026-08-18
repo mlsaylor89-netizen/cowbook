@@ -252,6 +252,7 @@ export function HerdList() {
                             <p className="text-xs text-muted-foreground leading-tight">{animal.name}</p>
                           )}
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {animal.sex === 'M' && <MaleBadge />}
                             <LactationBadge status={lactStat(animal)} />
                             <ReproBadge status={reproStat(animal)} />
                             {lactStat(animal) !== 'Heifer' && getDIM(animal) !== null && (
@@ -284,6 +285,7 @@ export function HerdList() {
                           <p className="text-xs text-muted-foreground leading-tight">{animal.name}</p>
                         )}
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {animal.sex === 'M' && <MaleBadge />}
                           <LactationBadge status={lactStat(animal)} />
                           <ReproBadge status={reproStat(animal)} />
                           {lactStat(animal) !== 'Heifer' && getDIM(animal) !== null && (
@@ -377,6 +379,14 @@ export function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${color}`}>
       {status}
+    </span>
+  );
+}
+
+export function MaleBadge() {
+  return (
+    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-sky-100 text-sky-800 border-sky-200">
+      ♂ Male
     </span>
   );
 }

@@ -350,6 +350,7 @@ export async function processPregCheck(data: Omit<PregnancyCheck, 'id' | 'create
 export async function processCalving(
   data: Omit<Calving, 'id' | 'createdAt' | 'updatedAt'>,
   animal: Animal,
+  options: { keepBullCalf?: boolean } = {},
 ): Promise<{ calvingId: string; calfId: string | null }> {
   const calvingId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -376,6 +377,7 @@ export async function processCalving(
       number: '00',
       name: `Calf of ${animal.number}`,
       breed: animal.breed,
+      sex: 'F',
       status: 'Heifer',
       lactationStatus: 'Heifer',
       reproStatus: 'Open',
@@ -383,6 +385,29 @@ export async function processCalving(
       dam: `${animal.number} ${animal.name}`,
       birthDate: data.calvingDate,
       notes: `Born ${new Date(data.calvingDate).toLocaleDateString()}. Dam: ${animal.number} ${animal.name}.${data.notes ? ' ' + data.notes : ''}`,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { calvingId, calfId };
+  }
+
+  // Optionally keep a bull calf in the herd
+  if (data.calfSex === 'Bull' && options.keepBullCalf) {
+    const calfId = crypto.randomUUID();
+    await db.animals.add({
+      id: calfId,
+      farmId: animal.farmId,
+      number: '00',
+      name: `Bull Calf of ${animal.number}`,
+      breed: animal.breed,
+      sex: 'M',
+      status: 'Heifer',       // closest available status; sex field distinguishes male
+      lactationStatus: 'Heifer',
+      reproStatus: 'Open',
+      lactationNumber: 0,
+      dam: `${animal.number} ${animal.name}`,
+      birthDate: data.calvingDate,
+      notes: `Bull calf born ${new Date(data.calvingDate).toLocaleDateString()}. Dam: ${animal.number} ${animal.name}.${data.notes ? ' ' + data.notes : ''}`,
       createdAt: now,
       updatedAt: now,
     });

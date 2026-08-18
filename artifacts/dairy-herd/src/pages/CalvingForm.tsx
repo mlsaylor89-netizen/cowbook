@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { processCalving } from '@/db/computed';
@@ -25,6 +26,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function CalvingForm() {
   const [, setLocation] = useLocation();
+  const [keepBullCalf, setKeepBullCalf] = useState(false);
   const searchParams = new URLSearchParams(window.location.search);
   const initialAnimalId = searchParams.get('animalId') || '';
 
@@ -54,6 +56,7 @@ export function CalvingForm() {
         notes: values.notes || undefined,
       },
       animal,
+      { keepBullCalf: values.calfSex === 'Bull' && keepBullCalf },
     );
 
     // Check if any calving protocols exist — if so, send user to the checklist.
@@ -143,7 +146,10 @@ export function CalvingForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Calf</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={v => { field.onChange(v); if (v !== 'Bull') setKeepBullCalf(false); }}
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger className="h-12 text-base">
                           <SelectValue />
@@ -161,6 +167,33 @@ export function CalvingForm() {
                   </FormItem>
                 )}
               />
+
+              {/* Bull calf — keep in herd? */}
+              {form.watch('calfSex') === 'Bull' && (
+                <button
+                  type="button"
+                  onClick={() => setKeepBullCalf(v => !v)}
+                  className={`w-full flex items-center justify-between rounded-xl border-2 px-4 py-3 transition-all ${
+                    keepBullCalf
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/40'
+                  }`}
+                >
+                  <div className="text-left">
+                    <p className="font-bold text-base">Keep bull calf in herd?</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {keepBullCalf
+                        ? 'He will appear on the herd page flagged as male'
+                        : 'He will not be added to your herd records'}
+                    </p>
+                  </div>
+                  <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    keepBullCalf ? 'border-primary bg-primary' : 'border-muted-foreground'
+                  }`}>
+                    {keepBullCalf && <span className="text-primary-foreground text-xs font-bold">✓</span>}
+                  </div>
+                </button>
+              )}
 
               {/* Notes */}
               <FormField
