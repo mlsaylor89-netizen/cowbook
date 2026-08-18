@@ -63,6 +63,7 @@ export function AnimalDetail() {
   const [panelValue, setPanelValue]   = useState('');
   const [panelNotes, setPanelNotes]   = useState('');
   const [panelSaving, setPanelSaving] = useState(false);
+  const [expandedPcId, setExpandedPcId] = useState<string | null>(null);
 
   const data = useLiveQuery(async () => {
     if (!id) return null;
@@ -98,7 +99,6 @@ export function AnimalDetail() {
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
   const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolMap } = data;
-  const [expandedPcId, setExpandedPcId] = useState<string | null>(null);
   const dim = getDIM(animal);
 
   function openPanel(panel: typeof activePanel) {
