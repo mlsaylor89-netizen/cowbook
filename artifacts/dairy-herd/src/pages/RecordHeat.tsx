@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useSearch, Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, addHours, parseISO } from 'date-fns';
@@ -76,9 +76,35 @@ export function RecordHeat() {
 
   // Load breeding timing from settings (fall back to defaults if not yet saved)
   const settings = useLiveQuery(() => db.settings.get('default'));
-  const conventionalHours = settings?.conventionalBreedingHours ?? 12;
-  const sexedHours        = settings?.sexedBreedingHours        ?? 30;
-  const etHours           = settings?.embryoTransferHours       ?? 168;
+  const conventionalHours   = settings?.conventionalBreedingHours ?? 12;
+  const sexedHours          = settings?.sexedBreedingHours        ?? 30;
+  const etHours             = settings?.embryoTransferHours       ?? 168;
+  const sexedMaxService     = settings?.sexedSemenMaxService      ?? 2;
+
+  // Service number = breedings since last calving + 1
+  const serviceNumber = useLiveQuery(async () => {
+    if (!selectedAnimalId) return null;
+    const [calvings, breedings] = await Promise.all([
+      db.calvings.where('animalId').equals(selectedAnimalId).toArray(),
+      db.breedings.where('animalId').equals(selectedAnimalId).toArray(),
+    ]);
+    const lastCalving = calvings.sort((a, b) => b.calvingDate.localeCompare(a.calvingDate))[0];
+    const sinceDate = lastCalving?.calvingDate ?? '1900-01-01';
+    const count = breedings.filter(b => b.date.slice(0, 10) >= sinceDate).length;
+    return count + 1;
+  }, [selectedAnimalId]);
+
+  // Auto-default semen type when animal or settings threshold changes
+  // Use a ref to avoid overriding a manual selection within the same animal
+  const lastAutoAnimalId = useRef<string>('');
+  useEffect(() => {
+    if (serviceNumber == null) return;
+    // Always re-default when switching to a new animal; also apply on first load
+    if (selectedAnimalId !== lastAutoAnimalId.current) {
+      lastAutoAnimalId.current = selectedAnimalId;
+      setBreedingType(serviceNumber <= sexedMaxService ? 'sexed' : 'conventional');
+    }
+  }, [selectedAnimalId, serviceNumber, sexedMaxService]);
 
   // Computed times — all derived from the observed heat datetime
   const observedDt = useMemo(() => safeParse(observedAt), [observedAt]);
@@ -313,7 +339,18 @@ export function RecordHeat() {
             <>
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Semen Type</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Semen Type</p>
+                    {serviceNumber != null && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                        serviceNumber <= sexedMaxService
+                          ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400'
+                          : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400'
+                      }`}>
+                        Service #{serviceNumber}
+                      </span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -325,7 +362,10 @@ export function RecordHeat() {
                       }`}
                     >
                       <p className="font-bold text-base">Conventional</p>
-                      <p className="text-sm text-muted-foreground mt-0.5">Breed in 12 hours</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">Breed in {conventionalHours}h</p>
+                      {serviceNumber != null && serviceNumber > sexedMaxService && (
+                        <p className="text-xs text-primary font-semibold mt-1">← Recommended</p>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -337,7 +377,10 @@ export function RecordHeat() {
                       }`}
                     >
                       <p className="font-bold text-base">Sexed</p>
-                      <p className="text-sm text-muted-foreground mt-0.5">Breed in 30 hours</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">Breed in {sexedHours}h</p>
+                      {serviceNumber != null && serviceNumber <= sexedMaxService && (
+                        <p className="text-xs text-primary font-semibold mt-1">← Recommended</p>
+                      )}
                     </button>
                   </div>
                 </CardContent>

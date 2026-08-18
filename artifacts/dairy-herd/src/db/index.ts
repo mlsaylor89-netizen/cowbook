@@ -234,6 +234,8 @@ export interface Settings {
   conventionalBreedingHours: number;  // default 12
   sexedBreedingHours: number;          // default 30
   embryoTransferHours: number;         // default 168
+  // Semen type auto-default: services ≤ this → sexed; > this → conventional
+  sexedSemenMaxService: number;        // default 2
   updatedAt: string;
 }
 

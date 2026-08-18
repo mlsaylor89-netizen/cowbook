@@ -39,6 +39,7 @@ const formSchema = z.object({
   conventionalBreedingHours: z.coerce.number().min(1).max(72),
   sexedBreedingHours: z.coerce.number().min(1).max(72),
   embryoTransferHours: z.coerce.number().min(24).max(240),
+  sexedSemenMaxService: z.coerce.number().min(1).max(20),
 });
 
 export function Settings() {
@@ -90,6 +91,7 @@ export function Settings() {
       conventionalBreedingHours: 12,
       sexedBreedingHours: 30,
       embryoTransferHours: 168,
+      sexedSemenMaxService: 2,
     },
   });
 
@@ -214,6 +216,16 @@ export function Settings() {
                     </FormItem>
                   )} />
                 </div>
+                <FormField control={form.control} name="sexedSemenMaxService" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default to sexed semen through service #</FormLabel>
+                    <FormControl><Input className="h-12" type="number" min={1} max={20} {...field} /></FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Services 1–{form.watch('sexedSemenMaxService')} auto-select <strong>Sexed</strong>; service {Number(form.watch('sexedSemenMaxService')) + 1}+ auto-select <strong>Conventional</strong>. You can always override per heat.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
 
               <Button type="submit" className="w-full h-14 text-lg font-bold">
