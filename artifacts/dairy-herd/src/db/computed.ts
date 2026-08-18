@@ -106,6 +106,7 @@ export function deriveStatus(
 export function getDIM(animal: Animal): number | null {
   if (!animal.lastCalvingDate) return null;
   if (lactStat(animal) === 'Heifer') return null;
+  if (lactStat(animal) === 'Dry') return null;
   return differenceInDays(new Date(), parseISO(animal.lastCalvingDate));
 }
 
