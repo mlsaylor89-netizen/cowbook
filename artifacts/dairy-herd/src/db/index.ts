@@ -24,6 +24,7 @@ export interface Animal {
   lastCalvingDate?: string;
   expectedCalvingDate?: string;
   expectedDryOffDate?: string;
+  magnetDate?: string;     // date a hardware magnet was administered
   photoUrl?: string;       // base64 data URL stored locally in IndexedDB
   notes?: string;
   createdAt: string;

@@ -503,6 +503,12 @@ export function AnimalDetail() {
                 <p className="font-bold font-mono text-sm">{animal.registrationNumber}</p>
               </div>
             )}
+            {animal.magnetDate && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Magnet Given</p>
+                <p className="font-bold text-sm">{format(parseISO(animal.magnetDate), 'MMM d, yyyy')}</p>
+              </div>
+            )}
             {animal.rfidTag && (
               <div>
                 <p className="text-xs text-muted-foreground uppercase">RFID</p>

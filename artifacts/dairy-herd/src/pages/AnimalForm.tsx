@@ -37,6 +37,7 @@ const formSchema = z.object({
   disposition: z.enum(['Active', 'Sold', 'Dead']),
   lactationNumber: z.coerce.number().min(0),
   registrationNumber: z.string().optional(),
+  magnetDate: z.string().optional(),
   rfidTag: z.string().optional(),
   earTattooLeft: z.string().optional(),
   earTattooRight: z.string().optional(),
@@ -98,6 +99,7 @@ export function AnimalForm() {
       disposition: 'Active',
       lactationNumber: 1,
       registrationNumber: '',
+      magnetDate: '',
       rfidTag: '',
       earTattooLeft: '',
       earTattooRight: '',
@@ -144,6 +146,7 @@ export function AnimalForm() {
             disposition: inferDisposition(animal.status),
             lactationNumber: animal.lactationNumber,
             registrationNumber: animal.registrationNumber || '',
+            magnetDate: animal.magnetDate || '',
             rfidTag: animal.rfidTag || '',
             earTattooLeft: animal.earTattooLeft || '',
             earTattooRight: animal.earTattooRight || '',
@@ -191,6 +194,7 @@ export function AnimalForm() {
         status: derivedStatus,
         lactationNumber: values.lactationNumber,
         registrationNumber: values.registrationNumber?.trim() || undefined,
+        magnetDate: values.magnetDate || undefined,
         rfidTag: values.rfidTag || undefined,
         earTattooLeft: values.earTattooLeft?.trim() || undefined,
         earTattooRight: values.earTattooRight?.trim() || undefined,
@@ -230,6 +234,7 @@ export function AnimalForm() {
       status: derivedStatus,
       lactationNumber: values.lactationNumber,
       registrationNumber: values.registrationNumber?.trim() || undefined,
+      magnetDate: values.magnetDate || undefined,
       rfidTag: values.rfidTag || undefined,
       earTattooLeft: values.earTattooLeft?.trim() || undefined,
       earTattooRight: values.earTattooRight?.trim() || undefined,
@@ -529,6 +534,13 @@ export function AnimalForm() {
                     <FormItem>
                       <FormLabel>Registration Number</FormLabel>
                       <FormControl><Input className="h-12" placeholder="Optional" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="magnetDate" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Magnet Given</FormLabel>
+                      <FormControl><Input type="date" className="h-12" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

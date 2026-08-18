@@ -258,6 +258,7 @@ export function HerdList() {
                             {lactStat(animal) !== 'Heifer' && getDIM(animal) !== null && (
                               <span className="text-xs text-muted-foreground">{getDIM(animal)} DIM</span>
                             )}
+                            {animal.magnetDate && <MagnetBadge />}
                           </div>
                         </div>
                       </div>
@@ -291,6 +292,7 @@ export function HerdList() {
                           {lactStat(animal) !== 'Heifer' && getDIM(animal) !== null && (
                             <span className="text-xs text-muted-foreground">{getDIM(animal)} DIM</span>
                           )}
+                          {animal.magnetDate && <MagnetBadge />}
                         </div>
                       </div>
                     </div>
@@ -387,6 +389,14 @@ export function MaleBadge() {
   return (
     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-sky-100 text-sky-800 border-sky-200">
       ♂ Male
+    </span>
+  );
+}
+
+export function MagnetBadge() {
+  return (
+    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-200">
+      🧲 Magnet
     </span>
   );
 }
