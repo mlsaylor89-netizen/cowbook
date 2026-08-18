@@ -372,12 +372,15 @@ export async function processBreeding(data: Omit<Breeding, 'id' | 'createdAt' | 
 
   await db.breedings.add({ ...data, id, createdAt: now, updatedAt: now });
 
-  // Update reproStatus to Bred if the animal is currently Open
+  // Update reproStatus to Bred if the animal is currently Open or Pregnant
+  // (Pregnant → Bred covers the case where a pregnancy was lost and the animal is re-bred)
   const animal = await db.animals.get(data.animalId);
-  if (animal && reproStat(animal) === 'Open') {
+  if (animal && (reproStat(animal) === 'Open' || reproStat(animal) === 'Pregnant')) {
     await db.animals.update(data.animalId, {
       reproStatus: 'Bred',
       status: deriveStatus(lactStat(animal), 'Bred', 'Active'),
+      expectedCalvingDate: undefined,
+      expectedDryOffDate: undefined,
       updatedAt: now,
     });
   }

@@ -41,7 +41,7 @@ export function BreedingForm() {
           const s = a.status;
           if (s === 'Sold' || s === 'Dead') return false;
           const rs = a.reproStatus ?? (s === 'Pregnant' ? 'Pregnant' : s === 'BredHeifer' ? 'Bred' : 'Open');
-          return rs === 'Open' || rs === 'Bred';
+          return rs === 'Open' || rs === 'Bred' || rs === 'Pregnant';
         })
         .sort((a, b) => (a.barnName || a.name).localeCompare(b.barnName || b.name)),
       bulls: await db.semenBulls.toArray(),
