@@ -198,6 +198,7 @@ function DryOffRow({ animal, daysUntilDryOff }: { animal: any; daysUntilDryOff: 
       await db.animals.update(animal.id, {
         lactationStatus: 'Dry',
         status: 'Dry',
+        dryOffDate: now,
         updatedAt: now,
       });
       await db.animalNotes.add({

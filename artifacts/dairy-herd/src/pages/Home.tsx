@@ -4,7 +4,7 @@ import { format, parseISO, isToday, isBefore } from 'date-fns';
 import { db } from '@/db';
 import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, getWatchForHeatList, getScheduledProtocolsDue } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer, CalendarDays, ClipboardList } from 'lucide-react';
+import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer, CalendarDays, ClipboardList, FlaskConical } from 'lucide-react';
 import { HeatAlerts } from '@/pages/HeatAlerts';
 import { SyncEventWidget } from '@/pages/SyncEventWidget';
 import { seedDemoData } from '@/db/seed';
@@ -58,6 +58,7 @@ export function Home() {
 
     return {
       summary: getHerdSummary(animals, settings),
+      lastTestDayDate: settings.lastTestDayDate ?? null,
       pregCheck: getPregCheckList(animals, breedings, pregChecks, settings),
       fresh: getFreshCowList(animals, settings),
       breedingAttention: getBreedingAttentionList(animals, breedings, settings),
@@ -268,6 +269,15 @@ export function Home() {
             icon={<CalendarDays className="h-5 w-5 text-primary" />}
             href="/sync-protocol"
             alert={data.syncDueCount > 0}
+          />
+          <ChecklistCard
+            title="Test Day"
+            count={0}
+            subtitle={data.lastTestDayDate
+              ? `Last: ${format(parseISO(data.lastTestDayDate), 'MMM d, yyyy')}`
+              : 'Tap to set up'}
+            icon={<FlaskConical className="h-5 w-5 text-teal-600" />}
+            href="/test-day"
           />
         </div>
       </div>

@@ -19,6 +19,8 @@ const formSchema = z.object({
   animalId: z.string().min(1, 'Animal is required'),
   calvingDate: z.string().min(1, 'Calving date is required'),
   calfSex: z.enum(['Heifer', 'Bull', 'Twins', 'Stillborn', 'Unknown']),
+  calfTag: z.string().optional(),
+  twinCalfTag: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -40,6 +42,8 @@ export function CalvingForm() {
       animalId: initialAnimalId,
       calvingDate: format(new Date(), 'yyyy-MM-dd'),
       calfSex: 'Heifer',
+      calfTag: '',
+      twinCalfTag: '',
       notes: '',
     },
   });
@@ -53,6 +57,8 @@ export function CalvingForm() {
         animalId: values.animalId,
         calvingDate: new Date(values.calvingDate).toISOString(),
         calfSex: values.calfSex,
+        calfTag: values.calfTag || undefined,
+        twinCalfTag: values.twinCalfTag || undefined,
         notes: values.notes || undefined,
       },
       animal,
@@ -167,6 +173,42 @@ export function CalvingForm() {
                   </FormItem>
                 )}
               />
+
+              {/* Calf Tag / ID */}
+              <FormField
+                control={form.control}
+                name="calfTag"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Calf Tag / ID <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        className="h-12 text-base"
+                        placeholder={form.watch('calfSex') === 'Twins' ? 'First calf ear tag' : 'Ear tag or ID number'}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Second calf tag — only for twins */}
+              {form.watch('calfSex') === 'Twins' && (
+                <FormField
+                  control={form.control}
+                  name="twinCalfTag"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Twin Calf Tag / ID <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                      <FormControl>
+                        <Input className="h-12 text-base" placeholder="Second calf ear tag" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Bull calf — keep in herd? */}
               {form.watch('calfSex') === 'Bull' && (

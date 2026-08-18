@@ -20,6 +20,7 @@ export interface Animal {
   status: 'Lactating' | 'Dry' | 'Heifer' | 'BredHeifer' | 'Pregnant' | 'Open' | 'Sold' | 'Dead';
   // New split statuses — preferred by computed functions
   lactationStatus?: 'Milking' | 'Dry' | 'Heifer';
+  dryOffDate?: string;   // ISO date when the cow was actually dried off
   reproStatus?: 'Open' | 'Bred' | 'Pregnant' | 'Fresh';
   lastCalvingDate?: string;
   expectedCalvingDate?: string;
@@ -65,6 +66,8 @@ export interface Calving {
   animalId: string;
   calvingDate: string;
   calfSex: 'Heifer' | 'Bull' | 'Twins' | 'Stillborn' | 'Unknown';
+  calfTag?: string;      // ear tag / ID for first (or only) calf
+  twinCalfTag?: string;  // ear tag / ID for second calf when calfSex === 'Twins'
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -272,6 +275,7 @@ export interface Settings {
   embryoTransferHours: number;         // default 168
   // Semen type auto-default: services ≤ this → sexed; > this → conventional
   sexedSemenMaxService: number;        // default 2
+  lastTestDayDate?: string;            // ISO date of the most recently confirmed test day
   updatedAt: string;
 }
 

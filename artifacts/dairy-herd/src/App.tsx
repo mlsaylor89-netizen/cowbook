@@ -49,6 +49,7 @@ import { VaccinationForm } from '@/pages/VaccinationForm';
 import { Protocols } from '@/pages/Protocols';
 import { ProtocolForm } from '@/pages/ProtocolForm';
 import { ProtocolChecklist } from '@/pages/ProtocolChecklist';
+import { TestDay } from '@/pages/TestDay';
 
 // Firebase auth + sync
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -123,6 +124,7 @@ function Router() {
           <Route path="/" component={Home} />
           
           <Route path="/checklist/:type" component={Checklist} />
+          <Route path="/test-day" component={TestDay} />
           
           <Route path="/herd" component={HerdList} />
           <Route path="/herd/new" component={AnimalForm} />
