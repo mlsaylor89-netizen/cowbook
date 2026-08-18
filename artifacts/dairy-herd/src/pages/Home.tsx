@@ -2,9 +2,9 @@ import { Link } from 'wouter';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, parseISO, isToday, isBefore } from 'date-fns';
 import { db } from '@/db';
-import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, getWatchForHeatList } from '@/db/computed';
+import { getHerdSummary, getPregCheckList, getFreshCowList, getBreedingAttentionList, getDryOffList, getUpcomingCalvings, getTreatmentFollowUp, getWatchForHeatList, getScheduledProtocolsDue } from '@/db/computed';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer, CalendarDays } from 'lucide-react';
+import { ChevronRight, Stethoscope, Baby, HeartPulse, Droplet, CheckSquare, Activity, Pill, Thermometer, CalendarDays, ClipboardList } from 'lucide-react';
 import { HeatAlerts } from '@/pages/HeatAlerts';
 import { SyncEventWidget } from '@/pages/SyncEventWidget';
 import { seedDemoData } from '@/db/seed';
@@ -27,7 +27,7 @@ export function Home() {
   }, []);
 
   const data = useLiveQuery(async () => {
-    const [animals, breedings, pregChecks, treatments, settings, drugs, heats] = await Promise.all([
+    const [animals, breedings, pregChecks, treatments, settings, drugs, heats, protocols] = await Promise.all([
       db.animals.toArray(),
       db.breedings.toArray(),
       db.pregnancyChecks.toArray(),
@@ -35,6 +35,7 @@ export function Home() {
       db.settings.get('default'),
       db.drugProducts.toArray(),
       db.heats.toArray(),
+      db.protocols.toArray(),
     ]);
 
     if (!settings) return null;
@@ -68,6 +69,7 @@ export function Home() {
       syncDueCount,
       syncAnimalCount,
       syncNextDate,
+      scheduledProtocols: getScheduledProtocolsDue(animals, protocols),
     };
   });
 
@@ -157,6 +159,54 @@ export function Home() {
             </Card>
           </Link>
         </div>
+      )}
+
+      {/* Scheduled Protocols widget */}
+      {data.scheduledProtocols.length > 0 && (
+        <Card className="shadow-sm border-teal-200 bg-teal-50/60 dark:bg-teal-950/20 dark:border-teal-800">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 bg-teal-100 dark:bg-teal-900 rounded-lg">
+                <ClipboardList className="h-4 w-4 text-teal-700 dark:text-teal-400" />
+              </div>
+              <p className="font-bold text-teal-900 dark:text-teal-100">Scheduled Protocols</p>
+              <span className="ml-auto text-xs font-bold text-teal-700 dark:text-teal-300">
+                {data.scheduledProtocols.length} due
+              </span>
+            </div>
+            <div className="space-y-1">
+              {data.scheduledProtocols.slice(0, 6).map((alert, i) => (
+                <Link
+                  key={`${alert.protocol.id}-${alert.animal.id}-${i}`}
+                  href={`/protocol-checklist?protocolId=${alert.protocol.id}&animalId=${alert.animal.id}&returnTo=/`}
+                  className="flex items-center justify-between gap-3 px-2 py-2 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                      {alert.animal.barnName || alert.animal.name}
+                      <span className="font-normal text-muted-foreground ml-1">#{alert.animal.number}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{alert.protocol.name}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {alert.daysUntil < 0 ? (
+                      <span className="text-xs font-bold text-destructive">{Math.abs(alert.daysUntil)}d overdue</span>
+                    ) : alert.daysUntil === 0 ? (
+                      <span className="text-xs font-bold text-emerald-600">Today</span>
+                    ) : (
+                      <span className="text-xs font-bold text-teal-700 dark:text-teal-300">in {alert.daysUntil}d</span>
+                    )}
+                  </div>
+                </Link>
+              ))}
+              {data.scheduledProtocols.length > 6 && (
+                <p className="text-xs text-teal-600 dark:text-teal-400 text-center pt-1 font-medium">
+                  +{data.scheduledProtocols.length - 6} more
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="pt-2">

@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Plus, Trash2, GripVertical, Pill, PenLine } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GripVertical, Pill, PenLine, Clock } from 'lucide-react';
 import { Link } from 'wouter';
 
 const TRIGGER_OPTIONS: { value: ProtocolTrigger; label: string }[] = [
@@ -27,6 +27,16 @@ const TRIGGER_OPTIONS: { value: ProtocolTrigger; label: string }[] = [
 
 type AddMode = 'pharmacy' | 'custom';
 
+function timingPreview(anchor: 'calving' | 'birth', days: number | undefined): string {
+  if (days === undefined || days === null || isNaN(days as number)) {
+    return 'Enter a number — negative for before, positive for after';
+  }
+  const anchorLabel = anchor === 'calving' ? 'calving' : 'birth';
+  if (days === 0) return `On the day of ${anchorLabel}`;
+  if (days < 0)   return `${Math.abs(days)} days before ${anchor === 'calving' ? 'the expected calving date' : 'birth'}`;
+  return `${days} days after ${anchorLabel}`;
+}
+
 export function ProtocolForm() {
   const [, navigate] = useLocation();
   const { farmId } = useAuth();
@@ -37,6 +47,11 @@ export function ProtocolForm() {
   const [triggerType, setTriggerType] = useState<ProtocolTrigger>('calving');
   const [items, setItems] = useState<ProtocolItem[]>([]);
   const [addMode, setAddMode] = useState<AddMode>('pharmacy');
+
+  // Timing state
+  const [timingEnabled, setTimingEnabled] = useState(false);
+  const [timingAnchor, setTimingAnchor] = useState<'calving' | 'birth'>('calving');
+  const [timingDays, setTimingDays] = useState<number | undefined>(undefined);
 
   // Pharmacy add state
   const [selectedDrugId, setSelectedDrugId] = useState('');
@@ -60,6 +75,11 @@ export function ProtocolForm() {
       setName(p.name);
       setTriggerType(p.triggerType);
       setItems(p.items);
+      if (p.timingAnchor != null && p.timingDays != null) {
+        setTimingEnabled(true);
+        setTimingAnchor(p.timingAnchor);
+        setTimingDays(p.timingDays);
+      }
       setLoaded(true);
     });
   }, [params.id, isEdit]);
@@ -102,11 +122,16 @@ export function ProtocolForm() {
     if (!name.trim() || !farmId) return;
     setSaving(true);
     const now = new Date().toISOString();
+    const timingData = timingEnabled && timingDays !== undefined
+      ? { timingAnchor, timingDays }
+      : { timingAnchor: undefined, timingDays: undefined };
+
     if (isEdit && params.id) {
-      await db.protocols.update(params.id, { name: name.trim(), triggerType, items, updatedAt: now });
+      await db.protocols.update(params.id, { name: name.trim(), triggerType, items, ...timingData, updatedAt: now });
     } else {
       await db.protocols.add({
         id: crypto.randomUUID(), farmId, name: name.trim(), triggerType, items,
+        ...timingData,
         createdAt: now, updatedAt: now,
       });
     }
@@ -155,6 +180,114 @@ export function ProtocolForm() {
         </CardContent>
       </Card>
 
+      {/* Scheduled Timing */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Scheduled Timing</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTimingEnabled(v => !v);
+                if (timingEnabled) setTimingDays(undefined);
+              }}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${timingEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${timingEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+
+          {!timingEnabled && (
+            <p className="text-xs text-muted-foreground">
+              Turn on to schedule this protocol at a specific number of days before or after calving / birth.
+              It will appear as an upcoming alert on the home page.
+            </p>
+          )}
+
+          {timingEnabled && (
+            <>
+              {/* Anchor selector */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTimingAnchor('calving')}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${timingAnchor === 'calving' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40'}`}
+                >
+                  <p className="font-bold text-sm leading-tight">From Calving</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Cows & bred heifers</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimingAnchor('birth')}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${timingAnchor === 'birth' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40'}`}
+                >
+                  <p className="font-bold text-sm leading-tight">From Birth</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Calves & young stock</p>
+                </button>
+              </div>
+
+              {/* Days offset */}
+              <div className="space-y-1.5">
+                <Label htmlFor="timing-days">Days offset</Label>
+                <Input
+                  id="timing-days"
+                  type="number"
+                  className="h-12 text-base"
+                  placeholder="e.g. −30 or +14"
+                  value={timingDays ?? ''}
+                  onChange={e => setTimingDays(e.target.value === '' ? undefined : Number(e.target.value))}
+                />
+                <p className={`text-xs font-medium ${timingDays !== undefined ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {timingPreview(timingAnchor, timingDays)}
+                </p>
+              </div>
+
+              {/* Quick presets */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground font-medium">Quick presets</p>
+                <div className="flex flex-wrap gap-2">
+                  {(timingAnchor === 'calving'
+                    ? [
+                        { label: '−60 days', value: -60 },
+                        { label: '−30 days', value: -30 },
+                        { label: '−21 days', value: -21 },
+                        { label: 'Day 0',    value: 0 },
+                        { label: '+3 days',  value: 3 },
+                        { label: '+14 days', value: 14 },
+                        { label: '+30 days', value: 30 },
+                      ]
+                    : [
+                        { label: 'Day 0',    value: 0 },
+                        { label: '+7 days',  value: 7 },
+                        { label: '+14 days', value: 14 },
+                        { label: '+30 days', value: 30 },
+                        { label: '+60 days', value: 60 },
+                        { label: '+90 days', value: 90 },
+                      ]
+                  ).map(p => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setTimingDays(p.value)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                        timingDays === p.value
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border hover:border-primary/50 text-muted-foreground'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Checklist items */}
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -173,7 +306,7 @@ export function ProtocolForm() {
                     <p className="text-xs text-muted-foreground">
                       {item.dosePerAnimal != null
                         ? `Dose: ${item.dosePerAnimal} ${drugs.find(d => d.id === item.drugProductId)?.unit ?? ''} per animal`
-                        : 'No dose recorded — inventory won\'t be deducted'}
+                        : "No dose recorded — inventory won't be deducted"}
                     </p>
                   )}
                 </div>
@@ -221,7 +354,6 @@ export function ProtocolForm() {
                     {availableDrugs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
 
-                  {/* Dose input — shown when a drug is selected */}
                   {selectedDrugId && (
                     <div className="flex gap-2 items-center">
                       <div className="flex-1 relative">

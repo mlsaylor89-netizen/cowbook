@@ -219,6 +219,8 @@ export interface Protocol {
   name: string;
   triggerType: ProtocolTrigger;
   items: ProtocolItem[];
+  timingAnchor?: 'calving' | 'birth'; // which date to offset from
+  timingDays?: number;                 // negative = before anchor, positive = after (0 = day-of)
   createdAt: string;
   updatedAt: string;
 }

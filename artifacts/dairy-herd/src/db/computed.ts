@@ -1,5 +1,69 @@
 import { addDays, differenceInDays, differenceInHours, isBefore, isAfter, subDays, isToday, parseISO } from 'date-fns';
-import { db, type Animal, type Breeding, type PregnancyCheck, type Calving, type Treatment, type Settings, type HeatObservation, type ETRecipientRecord } from './index';
+import { db, type Animal, type Breeding, type PregnancyCheck, type Calving, type Treatment, type Settings, type HeatObservation, type ETRecipientRecord, type Protocol } from './index';
+
+// ── Protocol scheduling ──────────────────────────────────────────────────────
+
+export interface ScheduledProtocolAlert {
+  protocol: Protocol;
+  animal: Animal;
+  dueDate: string;    // yyyy-MM-dd
+  daysUntil: number;  // negative = overdue
+}
+
+/**
+ * Returns protocol-animal pairs whose scheduled due date falls within
+ * the look-ahead window (default 14 days) or is overdue by up to 7 days.
+ * Skips animals that are Sold or Dead.
+ */
+export function getScheduledProtocolsDue(
+  animals: Animal[],
+  protocols: Protocol[],
+  windowDays = 14,
+): ScheduledProtocolAlert[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const alerts: ScheduledProtocolAlert[] = [];
+
+  for (const protocol of protocols) {
+    if (protocol.timingAnchor == null || protocol.timingDays == null) continue;
+
+    for (const animal of animals) {
+      if (animal.status === 'Sold' || animal.status === 'Dead') continue;
+
+      let anchorDate: Date | null = null;
+
+      if (protocol.timingAnchor === 'calving') {
+        if (!animal.expectedCalvingDate) continue;
+        anchorDate = new Date(animal.expectedCalvingDate);
+      } else if (protocol.timingAnchor === 'birth') {
+        if (!animal.birthDate) continue;
+        anchorDate = new Date(animal.birthDate);
+      }
+
+      if (!anchorDate) continue;
+
+      const dueDate = new Date(anchorDate);
+      dueDate.setDate(dueDate.getDate() + protocol.timingDays!);
+      dueDate.setHours(0, 0, 0, 0);
+
+      const daysUntil = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Show if due within window or overdue by up to 7 days
+      if (daysUntil >= -7 && daysUntil <= windowDays) {
+        alerts.push({
+          protocol,
+          animal,
+          dueDate: dueDate.toISOString().slice(0, 10),
+          daysUntil,
+        });
+      }
+    }
+  }
+
+  // Overdue first, then soonest upcoming
+  return alerts.sort((a, b) => a.daysUntil - b.daysUntil);
+}
 
 // ── Status helpers: prefer new split fields, fall back for old records ──────
 

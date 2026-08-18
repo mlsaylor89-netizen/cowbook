@@ -115,6 +115,16 @@ export function Protocols() {
                         </span>
                       )}
                     </p>
+                    {p.timingAnchor != null && p.timingDays != null && (
+                      <p className="text-xs text-primary font-semibold mt-1 flex items-center gap-1">
+                        <span>⏱</span>
+                        {p.timingDays === 0
+                          ? `Day of ${p.timingAnchor}`
+                          : p.timingDays < 0
+                          ? `${Math.abs(p.timingDays)}d before ${p.timingAnchor}`
+                          : `+${p.timingDays}d after ${p.timingAnchor}`}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-1.5 shrink-0">
                     <Button
