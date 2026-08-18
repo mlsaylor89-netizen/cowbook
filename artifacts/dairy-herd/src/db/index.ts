@@ -276,6 +276,7 @@ export interface Settings {
   // Semen type auto-default: services ≤ this → sexed; > this → conventional
   sexedSemenMaxService: number;        // default 2
   lastTestDayDate?: string;            // ISO date of the most recently confirmed test day
+  previousTestDayDate?: string;        // the test day before lastTestDayDate — used to revert
   updatedAt: string;
 }
 

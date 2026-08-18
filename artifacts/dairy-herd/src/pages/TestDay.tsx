@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { format, parseISO } from 'date-fns';
 import { Link } from 'wouter';
-import { ArrowLeft, FlaskConical, CalendarCheck, Printer, ClipboardList, Copy, Check } from 'lucide-react';
+import { ArrowLeft, FlaskConical, CalendarCheck, Printer, ClipboardList, Copy, Check, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,8 @@ export function TestDay() {
     return { settings, animals, breedings, calvings, pregChecks, semenBulls };
   });
 
-  const lastTestDay = raw?.settings?.lastTestDayDate ?? null;
+  const lastTestDay     = raw?.settings?.lastTestDayDate     ?? null;
+  const previousTestDay = raw?.settings?.previousTestDayDate ?? null;
 
   // ── Report data ─────────────────────────────────────────────────────────
   const reportData = useMemo(() => {
@@ -176,8 +177,13 @@ export function TestDay() {
       {mode === 'set' && (
         <SetTestDayPanel
           current={lastTestDay}
+          previous={previousTestDay}
           onSaved={(date) => {
             toast({ title: 'Test day saved', description: `Test day set to ${format(parseISO(date), 'MMM d, yyyy')}.` });
+            setMode('menu');
+          }}
+          onCleared={() => {
+            toast({ title: 'Test day cleared', description: 'No active test day is set.' });
             setMode('menu');
           }}
         />
@@ -197,69 +203,160 @@ export function TestDay() {
 
 // ─── Set Test Day Panel ───────────────────────────────────────────────────────
 
-function SetTestDayPanel({ current, onSaved }: { current: string | null; onSaved: (date: string) => void }) {
+function SetTestDayPanel({
+  current,
+  previous,
+  onSaved,
+  onCleared,
+}: {
+  current: string | null;
+  previous: string | null;
+  onSaved: (date: string) => void;
+  onCleared: () => void;
+}) {
   const [dateVal, setDateVal] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function upsert(patch: Record<string, string | undefined>) {
+    const updated = await db.settings.update('default', patch);
+    if (!updated) {
+      await db.settings.put({
+        id: 'default',
+        farmId: '',
+        farmName: 'My Farm',
+        pregnancyCheckDays: 35,
+        freshCowWindowDays: 10,
+        voluntaryWaitingPeriodDays: 60,
+        dryPeriodDays: 60,
+        dryOffWarningDays: 14,
+        lowSemenThreshold: 2,
+        gestationDays: 283,
+        conventionalBreedingHours: 12,
+        sexedBreedingHours: 30,
+        embryoTransferHours: 168,
+        sexedSemenMaxService: 2,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      } as any);
+    }
+  }
 
   async function save() {
     if (!dateVal) return;
     setSaving(true);
     try {
       const isoDate = new Date(dateVal).toISOString();
-      const updated = await db.settings.update('default', { lastTestDayDate: isoDate });
-      if (!updated) {
-        // settings row doesn't exist yet — create minimal row
-        await db.settings.put({
-          id: 'default',
-          farmId: '',
-          farmName: 'My Farm',
-          pregnancyCheckDays: 35,
-          freshCowWindowDays: 10,
-          voluntaryWaitingPeriodDays: 60,
-          dryPeriodDays: 60,
-          dryOffWarningDays: 14,
-          lowSemenThreshold: 2,
-          gestationDays: 283,
-          conventionalBreedingHours: 12,
-          sexedBreedingHours: 30,
-          embryoTransferHours: 168,
-          sexedSemenMaxService: 2,
-          lastTestDayDate: isoDate,
-          updatedAt: new Date().toISOString(),
-        });
-      }
+      // Shift current → previous before setting new
+      await upsert({
+        previousTestDayDate: current ?? undefined,
+        lastTestDayDate: isoDate,
+        updatedAt: new Date().toISOString(),
+      });
       onSaved(isoDate);
     } finally {
       setSaving(false);
     }
   }
 
+  async function revert() {
+    if (!previous) return;
+    setBusy(true);
+    try {
+      // Swap: previous becomes current, current becomes previous
+      await upsert({
+        lastTestDayDate: previous,
+        previousTestDayDate: current ?? undefined,
+        updatedAt: new Date().toISOString(),
+      });
+      onSaved(previous);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clear() {
+    if (!confirm('Clear the active test day? The report will be unavailable until you set a new date.')) return;
+    setBusy(true);
+    try {
+      await upsert({
+        lastTestDayDate: undefined,
+        previousTestDayDate: current ?? undefined,
+        updatedAt: new Date().toISOString(),
+      });
+      onCleared();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <Card>
-      <CardContent className="p-5 space-y-4">
-        {current && (
-          <p className="text-sm text-muted-foreground">
-            Current test day: <span className="font-semibold">{format(parseISO(current), 'MMMM d, yyyy')}</span>
+    <div className="space-y-4">
+      {/* Set new date */}
+      <Card>
+        <CardContent className="p-5 space-y-4">
+          {current && (
+            <p className="text-sm text-muted-foreground">
+              Current test day: <span className="font-semibold">{format(parseISO(current), 'MMMM d, yyyy')}</span>
+            </p>
+          )}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Set New Test Day Date</label>
+            <Input
+              type="date"
+              className="h-12 text-base"
+              value={dateVal}
+              onChange={e => setDateVal(e.target.value)}
+            />
+          </div>
+          <Button className="w-full h-12 text-base font-bold" onClick={save} disabled={saving || busy || !dateVal}>
+            <CalendarCheck className="h-5 w-5 mr-2" />
+            {saving ? 'Saving…' : 'Set as Test Day'}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            The report covers all events from this date forward to the next time you run it.
           </p>
-        )}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Test Day Date</label>
-          <Input
-            type="date"
-            className="h-12 text-base"
-            value={dateVal}
-            onChange={e => setDateVal(e.target.value)}
-          />
-        </div>
-        <Button className="w-full h-12 text-base font-bold" onClick={save} disabled={saving || !dateVal}>
-          <CalendarCheck className="h-5 w-5 mr-2" />
-          {saving ? 'Saving…' : 'Set as Test Day'}
-        </Button>
-        <p className="text-xs text-muted-foreground text-center">
-          The Test Day Report will cover all events from this date forward to the next time you run it.
-        </p>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Revert / Clear */}
+      {(previous || current) && (
+        <Card>
+          <CardContent className="p-5 space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">Other options</p>
+
+            {previous && (
+              <Button
+                variant="outline"
+                className="w-full h-12 gap-2 justify-start"
+                onClick={revert}
+                disabled={busy || saving}
+              >
+                <RotateCcw className="h-4 w-4 shrink-0" />
+                <span>
+                  Revert to previous test day
+                  <span className="ml-2 text-xs text-muted-foreground font-normal">
+                    ({format(parseISO(previous), 'MMM d, yyyy')})
+                  </span>
+                </span>
+              </Button>
+            )}
+
+            {current && (
+              <Button
+                variant="outline"
+                className="w-full h-12 gap-2 justify-start text-destructive border-destructive/40 hover:bg-destructive/5"
+                onClick={clear}
+                disabled={busy || saving}
+              >
+                <Trash2 className="h-4 w-4 shrink-0" />
+                Clear active test day
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 
