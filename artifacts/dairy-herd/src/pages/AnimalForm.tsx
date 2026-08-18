@@ -36,6 +36,7 @@ const formSchema = z.object({
   reproStatus: z.enum(['Open', 'Bred', 'Pregnant', 'Fresh']),
   disposition: z.enum(['Active', 'Sold', 'Dead']),
   lactationNumber: z.coerce.number().min(0),
+  registrationNumber: z.string().optional(),
   rfidTag: z.string().optional(),
   earTattooLeft: z.string().optional(),
   earTattooRight: z.string().optional(),
@@ -96,6 +97,7 @@ export function AnimalForm() {
       reproStatus: 'Open',
       disposition: 'Active',
       lactationNumber: 1,
+      registrationNumber: '',
       rfidTag: '',
       earTattooLeft: '',
       earTattooRight: '',
@@ -141,6 +143,7 @@ export function AnimalForm() {
             reproStatus: animal.reproStatus ?? inferRepro(animal.status),
             disposition: inferDisposition(animal.status),
             lactationNumber: animal.lactationNumber,
+            registrationNumber: animal.registrationNumber || '',
             rfidTag: animal.rfidTag || '',
             earTattooLeft: animal.earTattooLeft || '',
             earTattooRight: animal.earTattooRight || '',
@@ -187,6 +190,7 @@ export function AnimalForm() {
         reproStatus: values.reproStatus,
         status: derivedStatus,
         lactationNumber: values.lactationNumber,
+        registrationNumber: values.registrationNumber?.trim() || undefined,
         rfidTag: values.rfidTag || undefined,
         earTattooLeft: values.earTattooLeft?.trim() || undefined,
         earTattooRight: values.earTattooRight?.trim() || undefined,
@@ -225,6 +229,7 @@ export function AnimalForm() {
       reproStatus: values.reproStatus,
       status: derivedStatus,
       lactationNumber: values.lactationNumber,
+      registrationNumber: values.registrationNumber?.trim() || undefined,
       rfidTag: values.rfidTag || undefined,
       earTattooLeft: values.earTattooLeft?.trim() || undefined,
       earTattooRight: values.earTattooRight?.trim() || undefined,
@@ -517,6 +522,13 @@ export function AnimalForm() {
                     <FormItem>
                       <FormLabel>Date of Birth</FormLabel>
                       <FormControl><Input type="date" className="h-12" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="registrationNumber" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Registration Number</FormLabel>
+                      <FormControl><Input className="h-12" placeholder="Optional" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

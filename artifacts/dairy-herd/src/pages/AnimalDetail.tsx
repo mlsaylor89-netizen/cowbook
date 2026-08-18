@@ -497,6 +497,12 @@ export function AnimalDetail() {
                 <p className="font-bold">{animal.dam}</p>
               </div>
             )}
+            {animal.registrationNumber && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase">Reg. Number</p>
+                <p className="font-bold font-mono text-sm">{animal.registrationNumber}</p>
+              </div>
+            )}
             {animal.rfidTag && (
               <div>
                 <p className="text-xs text-muted-foreground uppercase">RFID</p>
