@@ -5,7 +5,16 @@ import { useLocation } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, Pencil, Trash2, Pill, Syringe } from 'lucide-react';
+
+const CATEGORY_BADGE: Record<string, { label: string; className: string; icon?: React.ReactNode }> = {
+  antibiotic: { label: 'Antibiotic', className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400', icon: <Pill className="h-2.5 w-2.5" /> },
+  vaccine:    { label: 'Vaccine',    className: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400', icon: <Syringe className="h-2.5 w-2.5" /> },
+  hormone:    { label: 'Hormone',    className: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400' },
+  pain:       { label: 'Pain / Anti-inflammatory', className: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400' },
+  vitamin:    { label: 'Vitamin / Supplement', className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400' },
+  other:      { label: 'Other',      className: 'bg-secondary text-muted-foreground border-border' },
+};
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,7 +94,15 @@ export function PharmacyInventory() {
                 <Card className={`shadow-sm ${isOut ? 'border-destructive' : isLow ? 'border-amber-500' : ''}`}>
                   <CardContent className="p-4 flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-lg leading-tight">{drug.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-lg leading-tight">{drug.name}</p>
+                        {drug.category && CATEGORY_BADGE[drug.category] && (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide border px-1.5 py-0.5 rounded-full ${CATEGORY_BADGE[drug.category].className}`}>
+                            {CATEGORY_BADGE[drug.category].icon}
+                            {CATEGORY_BADGE[drug.category].label}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-sm text-muted-foreground">
                         {drug.milkWithholdDays > 0 && (
                           <span>🥛 {drug.milkWithholdDays}d milk</span>

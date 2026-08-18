@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { usePermissions } from '@/lib/permissions';
 import { ViewerBlock } from '@/components/ViewerBlock';
 import { useLocation, useRoute, Link } from 'wouter';
-import { db, type DrugRoute } from '@/db';
+import { db, type DrugRoute, type DrugCategory } from '@/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,6 +36,7 @@ export function DrugForm() {
 
   const [form, setForm] = useState({
     name: '',
+    category: '' as DrugCategory | '',
     unit: 'mL',
     customUnit: '',
     bottleSize: '',
@@ -55,6 +56,7 @@ export function DrugForm() {
         const knownUnit = COMMON_UNITS.includes(drug.unit);
         setForm({
           name: drug.name,
+          category: drug.category ?? '',
           unit: knownUnit ? drug.unit : 'custom',
           customUnit: knownUnit ? '' : drug.unit,
           bottleSize: drug.bottleSize != null ? String(drug.bottleSize) : '',
@@ -84,6 +86,7 @@ export function DrugForm() {
       const now = new Date().toISOString();
       const payload = {
         name: form.name.trim(),
+        category: (form.category as DrugCategory) || undefined,
         unit: resolvedUnit.trim(),
         bottleSize: form.bottleSize ? parseFloat(form.bottleSize) : undefined,
         quantityOnHand: parseFloat(form.quantityOnHand) || 0,
@@ -133,6 +136,23 @@ export function DrugForm() {
             placeholder="e.g. Penicillin G, Banamine, Draxxin"
             required
           />
+        </div>
+
+        {/* Category */}
+        <div className="space-y-1.5">
+          <Label>Category</Label>
+          <Select value={form.category} onValueChange={val => set('category', val)}>
+            <SelectTrigger className="h-12"><SelectValue placeholder="Select category…" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">— Unclassified —</SelectItem>
+              <SelectItem value="antibiotic">Antibiotic</SelectItem>
+              <SelectItem value="vaccine">Vaccine</SelectItem>
+              <SelectItem value="hormone">Hormone</SelectItem>
+              <SelectItem value="pain">Pain / Anti-inflammatory</SelectItem>
+              <SelectItem value="vitamin">Vitamin / Supplement</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Unit */}

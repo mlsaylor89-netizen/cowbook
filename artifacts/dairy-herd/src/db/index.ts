@@ -200,9 +200,12 @@ export interface FlushRecord {
 
 export type DrugRoute = 'IM' | 'SQ' | 'IV' | 'Oral' | 'Intramammary' | 'Topical' | 'Other';
 
+export type DrugCategory = 'antibiotic' | 'vaccine' | 'hormone' | 'pain' | 'vitamin' | 'other';
+
 export interface DrugProduct {
   id: string;
   name: string;
+  category?: DrugCategory;
   unit: string;           // "mL", "tablets", "tubes", "g", "oz", etc.
   bottleSize?: number;    // full/original quantity — used to compute % remaining
   quantityOnHand: number;
