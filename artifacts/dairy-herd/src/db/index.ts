@@ -473,6 +473,34 @@ export class DairyHerdDB extends Dexie {
 
 export const db = new DairyHerdDB();
 
+/** Wipe every herd record (animals, events, inventory). Settings are kept. */
+export async function clearAllHerdData() {
+  await Promise.all([
+    db.animals.clear(),
+    db.breedings.clear(),
+    db.pregnancyChecks.clear(),
+    db.calvings.clear(),
+    db.treatments.clear(),
+    db.semenBulls.clear(),
+    db.semenPurchases.clear(),
+    db.animalNotes.clear(),
+    db.classifications.clear(),
+    db.embryos.clear(),
+    db.embryoPurchases.clear(),
+    db.drugProducts.clear(),
+    db.heats.clear(),
+    db.syncProtocolBatches.clear(),
+    db.syncEvents.clear(),
+    db.flushRecords.clear(),
+    db.etRecipients.clear(),
+    db.vaccinations.clear(),
+    db.healthEvents.clear(),
+    db.protocols.clear(),
+    db.protocolCompletions.clear(),
+    db.animalLocations.clear(),
+  ]);
+}
+
 // When a newer version of the app opens the DB in another tab, this tab must
 // release its connection immediately or every useLiveQuery call blocks forever
 // waiting for a DB that can never finish upgrading.

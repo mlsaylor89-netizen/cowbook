@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { db } from '@/db';
+import { db, clearAllHerdData } from '@/db';
 import { Link } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,25 +53,7 @@ export function Settings() {
     setClearing(true);
     setClearArmed(false);
     try {
-      await Promise.all([
-        db.animals.clear(),
-        db.breedings.clear(),
-        db.pregnancyChecks.clear(),
-        db.calvings.clear(),
-        db.treatments.clear(),
-        db.semenBulls.clear(),
-        db.semenPurchases.clear(),
-        db.animalNotes.clear(),
-        db.classifications.clear(),
-        db.embryos.clear(),
-        db.embryoPurchases.clear(),
-        db.drugProducts.clear(),
-        db.heats.clear(),
-        db.syncProtocolBatches.clear(),
-        db.syncEvents.clear(),
-        db.flushRecords.clear(),
-        db.etRecipients.clear(),
-      ]);
+      await clearAllHerdData();
       toast({ title: 'All data cleared', description: 'Every animal, event, and inventory record has been deleted. Settings were kept.' });
     } finally {
       setClearing(false);

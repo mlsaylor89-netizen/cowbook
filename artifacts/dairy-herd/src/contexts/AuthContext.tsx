@@ -16,6 +16,7 @@ import { firebaseApp } from '@/lib/firebase';
 import { getUserDoc } from '@/lib/farmService';
 import { startSync, stopSync } from '@/lib/syncService';
 import { AuthContext } from '@/contexts/authContextInstance';
+import { clearAllHerdData } from '@/db';
 
 const auth = getAuth(firebaseApp);
 
@@ -69,6 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signup(email: string, password: string, displayName: string) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName });
+    // New account — wipe any demo data that was loaded on this device
+    await clearAllHerdData();
   }
 
   async function logout() {
