@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Edit, Activity, Heart, Droplet, Baby, StickyNote, Trash2, Award, Pill, CheckCircle2, AlertTriangle, Thermometer, Camera, X, Syringe, Scissors, BarChart3, Milk, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, addDays, subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 /** Compress an image file to a JPEG data URL, max 900px on longest side. */
@@ -184,7 +184,7 @@ export function AnimalDetail() {
 
   async function deleteCalving(calvingId: string) {
     if (!confirm(
-      'Remove this calving record?\n\nShe will be returned to Pregnant status with her expected calving date restored.'
+      'Remove this calving record?\n\nShe will be returned to Pregnant status with her expected calving date restored from her last confirmed pregnancy check.'
     )) return;
 
     const calving = await db.calvings.get(calvingId);
@@ -198,23 +198,52 @@ export function AnimalDetail() {
       .sort((a, b) => a.calvingDate.localeCompare(b.calvingDate));
 
     const prevCalving = allCalvings.filter(c => c.calvingDate < calving.calvingDate).slice(-1)[0];
-
-    // Determine restored lactation number (undo the +1 that processCalving applied)
-    const restoredLactationNumber = Math.max(0, animal.lactationNumber - 1);
-
-    // Was she a heifer before this calving (i.e., no prior calvings)?
     const wasHeifer = !prevCalving;
 
+    // ── Resolve expectedCalvingDate from the confirmed pregnancy check ──────
+    // 1. Most recent Pregnant preg-check before this calving that has a stored date
+    const pregChecks = await db.pregnancyChecks
+      .where('animalId').equals(animal.id)
+      .toArray();
+
+    const confirmedCheck = pregChecks
+      .filter(pc =>
+        pc.result === 'Pregnant' &&
+        pc.checkDate < calving.calvingDate,
+      )
+      .sort((a, b) => b.checkDate.localeCompare(a.checkDate))[0];
+
+    let expectedCalvingDate: string | undefined = confirmedCheck?.expectedCalvingDate;
+
+    // 2. If the preg-check didn't store a date, calculate from the linked breeding
+    if (!expectedCalvingDate && confirmedCheck?.breedingId) {
+      const breeding = await db.breedings.get(confirmedCheck.breedingId);
+      if (breeding) {
+        const settings = await db.settings.get('default');
+        const gestation = settings?.gestationDays ?? 283;
+        expectedCalvingDate = addDays(parseISO(breeding.date), gestation).toISOString();
+      }
+    }
+
+    // 3. Final fallback: use actual calving date (close enough for display)
+    expectedCalvingDate ??= calving.calvingDate;
+
+    // Recalculate expected dry-off date if we have a meaningful calving date
+    let expectedDryOffDate: string | undefined;
+    if (expectedCalvingDate) {
+      const settings = await db.settings.get('default');
+      const dryPeriod = settings?.dryPeriodDays ?? 60;
+      expectedDryOffDate = subDays(parseISO(expectedCalvingDate), dryPeriod).toISOString();
+    }
+
     await db.animals.update(animal.id, {
-      // Restore status fields — she was dry & pregnant before calving (or bred heifer if first calving)
-      lactationStatus: wasHeifer ? 'Heifer' : 'Dry',
-      reproStatus:     'Pregnant',
-      status:          wasHeifer ? 'BredHeifer' : 'Pregnant',
-      // Restore calving-date fields
-      lastCalvingDate:    prevCalving?.calvingDate,
-      expectedCalvingDate: calving.calvingDate,   // use actual calving date as best proxy for expected
-      expectedDryOffDate:  undefined,
-      lactationNumber:     restoredLactationNumber,
+      lactationStatus:     wasHeifer ? 'Heifer' : 'Dry',
+      reproStatus:         'Pregnant',
+      status:              wasHeifer ? 'BredHeifer' : 'Pregnant',
+      lastCalvingDate:     prevCalving?.calvingDate,
+      expectedCalvingDate,
+      expectedDryOffDate,
+      lactationNumber:     Math.max(0, animal.lactationNumber - 1),
       updatedAt: now,
     });
 
