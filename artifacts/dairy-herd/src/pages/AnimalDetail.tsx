@@ -70,7 +70,7 @@ export function AnimalDetail() {
     const animal = await db.animals.get(id);
     if (!animal) return null;
 
-    const [breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions] =
+    const [breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, locations] =
       await Promise.all([
         db.breedings.where('animalId').equals(id).reverse().sortBy('date'),
         db.calvings.where('animalId').equals(id).reverse().sortBy('calvingDate'),
@@ -82,6 +82,7 @@ export function AnimalDetail() {
         db.vaccinations.where('animalId').equals(id).reverse().sortBy('vaccinationDate'),
         db.healthEvents.where('animalId').equals(id).reverse().sortBy('date'),
         db.protocolCompletions.where('animalId').equals(id).reverse().sortBy('date'),
+        db.animalLocations.toArray(),
       ]);
 
     // Load full protocol objects keyed by id (for expand view)
@@ -92,13 +93,13 @@ export function AnimalDetail() {
       if (p) protocolMap[pid] = p;
     }));
 
-    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolMap };
+    return { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolMap, locations };
   }, [id]);
 
   if (data === undefined) return <div className="p-4">Loading...</div>;
   if (data === null) return <div className="p-4">Animal not found.</div>;
 
-  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolMap } = data;
+  const { animal, breedings, calvings, treatments, pregChecks, notes, classifications, heats, vaccinations, healthEvents, protocolCompletions, protocolMap, locations } = data;
   const dim = getDIM(animal);
 
   function openPanel(panel: typeof activePanel) {
@@ -470,6 +471,31 @@ export function AnimalDetail() {
             <div className="bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-900">
               <p className="text-xs text-amber-800 dark:text-amber-500 uppercase font-bold">Due Date</p>
               <p className="font-bold text-amber-900 dark:text-amber-400">{format(parseISO(animal.expectedCalvingDate), 'MMM d, yyyy')}</p>
+            </div>
+          )}
+
+          {/* Location picker */}
+          {(locations && locations.length > 0) && (
+            <div className="flex items-center justify-between gap-3 p-2 rounded border bg-muted/40">
+              <span className="text-xs text-muted-foreground uppercase font-semibold flex items-center gap-1.5">
+                📍 Location
+              </span>
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring flex-1 max-w-[200px]"
+                value={animal.locationId ?? ''}
+                onChange={async e => {
+                  const val = e.target.value;
+                  await db.animals.update(animal.id, {
+                    locationId: val || undefined,
+                    updatedAt: new Date().toISOString(),
+                  });
+                }}
+              >
+                <option value="">Home</option>
+                {locations.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
             </div>
           )}
 

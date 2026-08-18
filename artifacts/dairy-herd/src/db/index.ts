@@ -25,6 +25,7 @@ export interface Animal {
   expectedCalvingDate?: string;
   expectedDryOffDate?: string;
   magnetDate?: string;     // date a hardware magnet was administered
+  locationId?: string;     // undefined / null = home farm; otherwise ID of an AnimalLocation
   photoUrl?: string;       // base64 data URL stored locally in IndexedDB
   notes?: string;
   createdAt: string;
@@ -358,6 +359,14 @@ export interface VaccinationRecord {
 
 export type HealthEventType = 'wean' | 'hoof-trim' | 'bcs' | 'dehorn' | 'magnet';
 
+export interface AnimalLocation {
+  id: string;
+  farmId: string;
+  name: string;          // e.g. "North Pasture", "Boarding Farm A"
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HealthEvent {
   id: string;
   animalId: string;
@@ -393,6 +402,7 @@ export class DairyHerdDB extends Dexie {
   healthEvents!: Table<HealthEvent, string>;
   protocols!: Table<Protocol, string>;
   protocolCompletions!: Table<ProtocolCompletion, string>;
+  animalLocations!: Table<AnimalLocation, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -453,6 +463,10 @@ export class DairyHerdDB extends Dexie {
     this.version(13).stores({
       protocols:           'id, farmId, triggerType',
       protocolCompletions: 'id, farmId, protocolId, animalId, date',
+    });
+    // v14: offsite location tracking
+    this.version(14).stores({
+      animalLocations: 'id, farmId',
     });
   }
 }

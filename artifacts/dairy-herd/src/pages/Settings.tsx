@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -7,7 +8,7 @@ import { Link } from 'wouter';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Save, Copy, CheckCheck, RefreshCw, UserMinus, Shield, Crown, AlertTriangle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Copy, CheckCheck, RefreshCw, UserMinus, Shield, Crown, AlertTriangle, Trash2, MapPin, Plus } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/useAuth';
@@ -239,6 +240,9 @@ export function Settings() {
       {/* ── Farm / Users ── */}
       <FarmUsersSection />
 
+      {/* ── Offsite Locations ── */}
+      <LocationsSection />
+
       {/* ── Danger Zone ── */}
       <div className="space-y-3">
         <h3 className="text-sm font-bold text-destructive uppercase tracking-wider px-1 flex items-center gap-2">
@@ -288,6 +292,86 @@ export function Settings() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// ─── Offsite Locations section ─────────────────────────────────────────────
+
+function LocationsSection() {
+  const { farmId } = useAuth();
+  const { toast } = useToast();
+  const [newName, setNewName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const locations = useLiveQuery(() => db.animalLocations.toArray(), []);
+
+  async function addLocation() {
+    const name = newName.trim();
+    if (!name) return;
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      await db.animalLocations.add({ id: crypto.randomUUID(), farmId: farmId ?? '', name, createdAt: now, updatedAt: now });
+      setNewName('');
+      inputRef.current?.focus();
+      toast({ title: `"${name}" added` });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeLocation(id: string, name: string) {
+    if (!confirm(`Remove "${name}"? Animals currently at this location will be reset to Home.`)) return;
+    // Clear locationId on any animals using this location
+    const affected = await db.animals.filter(a => a.locationId === id).toArray();
+    const now = new Date().toISOString();
+    await Promise.all(affected.map(a => db.animals.update(a.id, { locationId: undefined, updatedAt: now })));
+    await db.animalLocations.delete(id);
+    toast({ title: `"${name}" removed` });
+  }
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-bold uppercase tracking-wider px-1 flex items-center gap-2">
+        <MapPin className="h-4 w-4" /> Offsite Locations
+      </h3>
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Add any locations other than your home farm where animals may be sent (pastures, boarding, shows, etc.).
+          </p>
+          {locations && locations.length > 0 && (
+            <ul className="space-y-2">
+              {locations.map(loc => (
+                <li key={loc.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                  <span className="font-medium flex items-center gap-2">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> {loc.name}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeLocation(loc.id, loc.name)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex gap-2">
+            <Input
+              ref={inputRef}
+              placeholder="New location name…"
+              className="h-11"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addLocation()}
+            />
+            <Button className="h-11 px-4" onClick={addLocation} disabled={saving || !newName.trim()}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

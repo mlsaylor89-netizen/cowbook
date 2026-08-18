@@ -5,13 +5,14 @@ import { getDIM, lactStat, reproStat } from '@/db/computed';
 import { Link } from 'wouter';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Plus, Trash2, CheckSquare, Square, X, ArrowDownAZ, Hash } from 'lucide-react';
+import { Search, Plus, Trash2, CheckSquare, Square, X, ArrowDownAZ, Hash, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/useAuth';
 
 type SortMode = 'name' | 'number';
 type GroupFilter = 'all' | 'cows' | 'heifers';
+type LocationFilter = 'all' | 'home' | string; // string = locationId
 function getSavedSort(): SortMode {
   return (localStorage.getItem('herdSort') as SortMode) ?? 'name';
 }
@@ -56,6 +57,7 @@ export function HerdList() {
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>(getSavedSort);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>('all');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -69,6 +71,8 @@ export function HerdList() {
     setSortMode(next);
     localStorage.setItem('herdSort', next);
   }
+
+  const locations = useLiveQuery(() => db.animalLocations.toArray(), []);
 
   const animals = useLiveQuery(async () => {
     let all = await db.animals.toArray();
@@ -84,12 +88,19 @@ export function HerdList() {
     return all;
   }, [search]);
 
+  const locationMap = Object.fromEntries((locations ?? []).map(l => [l.id, l.name]));
+
   const sorted = animals
     ? [...animals]
         .filter(a => {
           if (groupFilter === 'heifers') return lactStat(a) === 'Heifer';
           if (groupFilter === 'cows') return lactStat(a) !== 'Heifer';
           return true;
+        })
+        .filter(a => {
+          if (locationFilter === 'all') return true;
+          if (locationFilter === 'home') return !a.locationId;
+          return a.locationId === locationFilter;
         })
         .sort((a, b) =>
           sortMode === 'number'
@@ -193,6 +204,29 @@ export function HerdList() {
         ))}
       </div>
 
+      {/* Location filter — only shown when offsite locations exist */}
+      {locations && locations.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+          {(['all', 'home', ...locations.map(l => l.id)] as LocationFilter[]).map(f => {
+            const label = f === 'all' ? 'All Locations' : f === 'home' ? 'Home' : locationMap[f] ?? f;
+            return (
+              <button
+                key={f}
+                onClick={() => setLocationFilter(f)}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold border transition-colors ${
+                  locationFilter === f
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-muted-foreground border-border hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Select-all bar */}
       {selectMode && !!sorted?.length && (
         <div className="flex items-center justify-between px-1">
@@ -259,6 +293,9 @@ export function HerdList() {
                               <span className="text-xs text-muted-foreground">{getDIM(animal)} DIM</span>
                             )}
                             {animal.magnetDate && <MagnetBadge />}
+                            {animal.locationId && locationMap[animal.locationId] && (
+                              <LocationBadge name={locationMap[animal.locationId]} />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -293,6 +330,9 @@ export function HerdList() {
                             <span className="text-xs text-muted-foreground">{getDIM(animal)} DIM</span>
                           )}
                           {animal.magnetDate && <MagnetBadge />}
+                          {animal.locationId && locationMap[animal.locationId] && (
+                            <LocationBadge name={locationMap[animal.locationId]} />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -397,6 +437,14 @@ export function MagnetBadge() {
   return (
     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-200">
       🧲 Magnet
+    </span>
+  );
+}
+
+export function LocationBadge({ name }: { name: string }) {
+  return (
+    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-violet-100 text-violet-800 border-violet-200 flex items-center gap-1">
+      📍 {name}
     </span>
   );
 }
