@@ -202,6 +202,35 @@ export type DrugRoute = 'IM' | 'SQ' | 'IV' | 'Oral' | 'Intramammary' | 'Topical'
 
 export type DrugCategory = 'antibiotic' | 'vaccine' | 'hormone' | 'pain' | 'vitamin' | 'other';
 
+// ── Protocols ─────────────────────────────────────────────────────────────
+export type ProtocolTrigger = 'calving' | 'dry-off' | 'vaccination' | 'treatment' | 'manual';
+
+export interface ProtocolItem {
+  id: string;
+  label: string;
+}
+
+export interface Protocol {
+  id: string;
+  farmId: string;
+  name: string;
+  triggerType: ProtocolTrigger;
+  items: ProtocolItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProtocolCompletion {
+  id: string;
+  farmId: string;
+  protocolId: string;
+  animalId: string;
+  date: string;
+  completedItems: string[]; // ProtocolItem ids that were checked
+  notes?: string;
+  createdAt: string;
+}
+
 export interface DrugProduct {
   id: string;
   name: string;
@@ -356,6 +385,8 @@ export class DairyHerdDB extends Dexie {
   etRecipients!: Table<ETRecipientRecord, string>;
   vaccinations!: Table<VaccinationRecord, string>;
   healthEvents!: Table<HealthEvent, string>;
+  protocols!: Table<Protocol, string>;
+  protocolCompletions!: Table<ProtocolCompletion, string>;
 
   constructor() {
     super('DairyHerdDB');
@@ -411,6 +442,11 @@ export class DairyHerdDB extends Dexie {
     this.version(12).stores({
       vaccinations: 'id, animalId, farmId, vaccinationDate, followUpDate',
       healthEvents:  'id, animalId, farmId, type, date',
+    });
+    // v13: custom protocols and completion records
+    this.version(13).stores({
+      protocols:           'id, farmId, triggerType',
+      protocolCompletions: 'id, farmId, protocolId, animalId, date',
     });
   }
 }

@@ -56,7 +56,23 @@ export function CalvingForm() {
       animal,
     );
 
-    setLocation(initialAnimalId ? `/herd/${initialAnimalId}` : '/herd');
+    // Check if any calving protocols exist — if so, send user to the checklist
+    const calvingProtocols = await db.protocols
+      .where('triggerType').equals('calving')
+      .count();
+
+    const returnTo = initialAnimalId ? `/herd/${initialAnimalId}` : '/herd';
+
+    if (calvingProtocols > 0) {
+      const params = new URLSearchParams({
+        trigger: 'calving',
+        animalId: values.animalId,
+        returnTo,
+      });
+      setLocation(`/protocol-checklist?${params.toString()}`);
+    } else {
+      setLocation(returnTo);
+    }
   }
 
   const backHref = initialAnimalId ? `/herd/${initialAnimalId}` : '/herd';

@@ -18,6 +18,7 @@ import {
   CalendarDays,
   Microscope,
   Pipette,
+  ListChecks,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/useAuth';
 
@@ -31,6 +32,7 @@ export function MoreMenu() {
       <div className="space-y-2">
         <MenuLink href="/heat" icon={<Thermometer className="h-5 w-5 text-rose-500" />} title="Record Heat / Alarm" />
         <MenuLink href="/sync-protocol" icon={<CalendarDays className="h-5 w-5 text-primary" />} title="Sync Protocols" />
+        <MenuLink href="/protocols" icon={<ListChecks className="h-5 w-5 text-teal-600" />} title="Protocols" />
         <MenuLink href="/reports" icon={<Activity className="h-5 w-5 text-blue-600" />} title="Herd Reports & Metrics" />
         <MenuLink href="/treatment-log" icon={<ClipboardList className="h-5 w-5 text-purple-600" />} title="Treatment Log" />
         <MenuLink href="/checklist/treatments" icon={<Droplet className="h-5 w-5 text-rose-600" />} title="Active Treatments & Withholds" />
